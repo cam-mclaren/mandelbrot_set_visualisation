@@ -1,0 +1,15 @@
+Notes on video size. 
+
+I may want to upload videos of different sizes to youtube and instagram. 
+
+According to the following website:
+
+
+https://invideo.io/blog/instagram-video-size/#:~:text=The%20Instagram%20feed%20supports%20videos,1080%20pixels%20x%201350%20pixels.
+
+The best resolution for instagram videos is 1080x1350. This is a portrait video that favours user experinence on 
+the phone app. 
+
+
+I will need to investigate, probably opencv is the best option for me. Paul the Solarian Programmer has a few tutorials 
+on opencv which I think could be really usefull for me. 
