@@ -32,9 +32,9 @@ def powerColor(distance, exp, const, scale):
 width=1000 # pixels 
 x=-0.65
 y=0
-x_range=4
-aspect_ratio=.75
-precision =1000
+x_range=3
+aspect_ratio=1
+precision =500
 
 # Resulting sub_parameters 
 
@@ -57,7 +57,7 @@ pixels=img.load()
 
 
 
-# Mandelbrot colouring algorithm (time escape algorithm)
+# Mandelbrot colouring algorithm (escape time algorithm)
 
 
 for col in range(width):
@@ -90,15 +90,15 @@ for col in range(width):
             
         if iteration_number<precision:
             distance = (iteration_number+1)/(precision+1)
-            #rgb = logColor(distance, 1.1, 0.5, .9)
-            rgb=powerColor(distance, 0.2, 0.27, 1.0)
+            #rgb = logColor(distance, , 0.5, .9)
+            rgb=powerColor(distance, 0.2, 0.27, 1)
             pixels[col,row]=rgb
             
             
 
-img.save('trial.png')
+img.save('trial2.png')
             
-os.system('open trial.png')
+os.system('open trial2.png')
             
             
             
