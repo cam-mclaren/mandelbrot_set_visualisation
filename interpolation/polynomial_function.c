@@ -6,6 +6,8 @@
 
 
 
+
+// A function to print arrays of integers
 void printarray(int *array, int size){
 	int index;
 	for( index=0; index<size; index++)
@@ -14,6 +16,7 @@ void printarray(int *array, int size){
 	}
 }
 
+// A function to print arrays of doubles
 void print_double_array(double *array, int size){
 	int index;
 	for( index=0; index<size; index++)
@@ -22,6 +25,7 @@ void print_double_array(double *array, int size){
 	}
 }
 
+// A function to write an array of doubles to a file.
 void write_double_array_to_file(const char * path, double * array, int array_length)
 {
 	FILE * fptr = fopen(path, "w");
@@ -35,16 +39,17 @@ void write_double_array_to_file(const char * path, double * array, int array_len
 
 
 
+// This function solves for the coefficients of a cubic B spline.
 
+// The know how to make this was acquired from "An Introduction to Numerical Methods and Analysis" by J.F Epperson.
+// I used material from chapter 2 and chapter 4.
 void interpolating_coefficient_solver(double * y_data, int y_size /* length of y data */, double* output_array)
 {
-
-
 	/*
-	 c_0 = (first_value)/6 so that means c[1] cause c[0]=c_(-1),
-	 c_(n) = (last_value)/6
-
-	  */
+	y_data: the y values over which to interpolate
+	y_size: the number of y values
+	output_array: a array of size y_size+2. This array stores the coefficents of the B spline.
+	 */
 
 		output_array[1] = y_data[0]/6;
 		output_array[y_size]=y_data[y_size-1]/6;
@@ -114,6 +119,7 @@ void interpolating_coefficient_solver(double * y_data, int y_size /* length of y
 }
 
 
+// This function supplied with the right coefficients and node arguments should give the value of the cubic B spline at x
 double interp_poly(double * coefficients, double * nodes, double x)
 {
 
@@ -129,34 +135,21 @@ double interp_poly(double * coefficients, double * nodes, double x)
 
 
 
+/* MAIN
 
+INPUT: A file containing some 6 digit hex values. The hex values will be interpreted
+as colours.
 
+OUTPUT: The output is passed to a folder "colour_parameters". It consists of 4 files.
 
+1. "nodes" file contains nodes over the domain [-h, n+h]
+2. "red_coefficients" file contains the coefficeints for the red cubic B spline
+3. "green_coefficients" file contains the coefficients for the green cubic B spline
+4. "blue_coefficients" file contains the coefficients for the blue cubic B spline
 
-
-// I may not need to include these...
-
-// I need to make the thing that actually calclates the coefficients
-
-/*
-nodes, y-values -> not sure how to stage the problem
- tridiagonal solver
-
-option 1. Create a function that is a tridiagonal solver . Create a seperate piece of code that constructs a matix that the solver works with.
-
-option 2. Create the tridagonal solver and matrix constructor in one piece of code.
-
-
-nodes, y-values -> function -> coefficients    I quite like option 2 I think it would work better.
-
-
-
- */
-
-
-
-// assume you have a vector of nodes and a vector of y_values
-
+OPTIONAL OUTPUT: If the macro COLOUR_CSV is defined then a csv file will be ouput into "colour_parameters"
+that contains samples of the domain and the three cubic B spline piecwise polynomials.
+*/
 
 int main(int argc, char * * argv){
 
@@ -327,11 +320,9 @@ int main(int argc, char * * argv){
 
 
 
-
+	#ifdef COLOUR_CSV
 	//Test the polynomial function
-
 	int num_of_points =100;
-
 	double * image_red = malloc(num_of_points*sizeof(double));
 	double * image_green = malloc(num_of_points*sizeof(double));
 	double * image_blue = malloc(num_of_points*sizeof(double));
@@ -344,25 +335,30 @@ int main(int argc, char * * argv){
 		image_green[index]= interp_poly(coefficients_green, nodes, domain[index]);
 		image_blue[index] = interp_poly(coefficients_blue, nodes, domain[index]);
 	}
-
-
 	// Write colour data to a csv
 
 
 	FILE * my_csv_file_pointer =fopen("colour_parameters/colour.csv", "w");
-
-
 	for( index = 0 ; index < num_of_points ; index++)
 	{
 		fprintf(my_csv_file_pointer, "%f, %f, %f, %f\n", domain[index], image_red[index], image_green[index], image_blue[index]);
 	}
-
 	fclose(my_csv_file_pointer);
+	free(image_red);
+	free(image_blue);
+	free(image_green);
+	free(domain);
+	#endif
+
+	// Not sure if I really have to do this, but it does no harm.
+	free(red_array_float);
+	free(green_array_float);
+	free(blue_array_float);
+	free(nodes);
+	free(coefficients_red);
+	free(coefficients_green);
+	free(coefficients_blue);
 
 	return 0;
 
 }
-
-
-
-	//Alright so here is my polynomial. I think it should actually be quite fast because there isn't any loops or logical chains
