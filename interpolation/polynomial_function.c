@@ -322,7 +322,7 @@ int main(int argc, char * * argv){
 
 	#ifdef COLOUR_CSV
 	//Test the polynomial function
-	int num_of_points =100;
+	int num_of_points =200;
 	double * image_red = malloc(num_of_points*sizeof(double));
 	double * image_green = malloc(num_of_points*sizeof(double));
 	double * image_blue = malloc(num_of_points*sizeof(double));

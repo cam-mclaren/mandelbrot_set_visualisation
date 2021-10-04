@@ -6,6 +6,10 @@ COMPILER = gcc
 
 # A list of compiler flags
 
+# list of macros
+
+MACROS = -D COLOUR_CSV 
+
 #List of textfiles to compile
 SBJS = polynomial_function.c
 
@@ -16,10 +20,10 @@ main.exe: $(OBJS)
 	$(COMPILER) $(OBJS) -o main.exe
 
 .c.o:
-	$(COMPILER) -c $(SBJS)
+	$(COMPILER) $(MACROS) -c $(SBJS)
 
 clean:
 	rm -rf *.o *.exe
 
-test: 
+test:
 	./main.exe hex_file
