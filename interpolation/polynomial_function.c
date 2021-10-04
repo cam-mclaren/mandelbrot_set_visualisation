@@ -3,7 +3,6 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define PI 3.14159
 
 
 
@@ -23,8 +22,24 @@ void print_double_array(double *array, int size){
 	}
 }
 
-void interpolating_coefficient_solver(double * y_data, int y_size, double* output_array)
+void write_double_array_to_file(const char * path, double * array, int array_length)
 {
+	FILE * fptr = fopen(path, "w");
+	int index;
+
+	for(index = 0; index < array_length; index++){
+		fprintf(fptr, "%f\n", array[index]);
+	}
+	fclose(fptr);
+}
+
+
+
+
+void interpolating_coefficient_solver(double * y_data, int y_size /* length of y data */, double* output_array)
+{
+
+
 	/*
 	 c_0 = (first_value)/6 so that means c[1] cause c[0]=c_(-1),
 	 c_(n) = (last_value)/6
@@ -63,9 +78,6 @@ void interpolating_coefficient_solver(double * y_data, int y_size, double* outpu
 
 		rhs[system_order-1]=rhs[system_order-1]-y_data[y_size-1]/6;
 
-		printf("rhs\n");
-		print_double_array(rhs, system_order);
-		printf("rhs\n");
 		// eliminate the lower
 
 		for( index =0; index<system_order-1; index++)
@@ -99,6 +111,20 @@ void interpolating_coefficient_solver(double * y_data, int y_size, double* outpu
 		free(rhs);
 		free(unknowns);
 
+}
+
+
+double interp_poly(double * coefficients, double * nodes, double x)
+{
+
+	double h = nodes[1]-nodes[0];
+	int k = floor( (x - nodes[1])/h)+2; // We add two instead of one because arrays begin their index at 0. In the text we used indexing starting at -1.
+
+
+	return coefficients[k-2]*pow((2-(x-nodes[k-2])/h),3) + \
+		coefficients[k-1]*( 1 + 3*pow( (1-(x-nodes[k-1])/h),1) + 3*pow( (1-(x-nodes[k-1])/h),2) - 3*pow( 1 - (x-nodes[k-1])/h, 3) )+ \
+		coefficients[k]*(1+3*pow( 1+ (x-nodes[k])/h, 1) + 3*pow( 1+ (x-nodes[k])/h, 2)-3*pow(1+(x-nodes[k])/h,3))+ \
+		coefficients[k+1]*pow(2+(x-nodes[k+1])/h,3);
 }
 
 
@@ -199,6 +225,8 @@ int main(int argc, char * * argv){
 	}
 
 
+
+
 	// fill  RGB arrays from the hex numbers in the input file.
 
 
@@ -246,6 +274,7 @@ int main(int argc, char * * argv){
 	free(green_array);
 	free(blue_array);
 
+	write_double_array_to_file("colour_parameters/red_values", red_array_float, count); /////////////////////////////// Delete this
 
 
 	/* Section 2  Interpolation
@@ -274,24 +303,61 @@ int main(int argc, char * * argv){
 	// start filling in the coefficients
 	double *coefficients_red = malloc((count+2)*sizeof(double));
 
+	double *coefficients_green = malloc((count+2)*sizeof(double));
+
+	double * coefficients_blue = malloc((count+2)*sizeof(double));
+
+	/* interpolating_coefficient_solver is a void function that will output its results into the third argument */
+
+	interpolating_coefficient_solver(red_array_float, count, coefficients_red);
+
+	interpolating_coefficient_solver(green_array_float, count, coefficients_green);
+
+	interpolating_coefficient_solver(blue_array_float, count, coefficients_blue);
 
 
-	//////////////////////////// Deletable test of the intepolation function
+	/*Now I want to write these coefficents out into the files */
 
 
-	double some_values[5] = {2, (double)8/5,(double)8/6, (double)8/7, 1};
-	double * some_coefficients = malloc(7*sizeof(double));
-
-	interpolating_coefficient_solver(some_values, 5, some_coefficients);
-	printf("coefficient outputs\n");
-	print_double_array(some_coefficients,7);
-	printf("some values\n");
-	print_double_array(some_values, 5);
+	write_double_array_to_file("colour_parameters/nodes", nodes, count+2);
+	write_double_array_to_file("colour_parameters/red_coefficients", coefficients_red, count+2);
+	write_double_array_to_file("colour_parameters/green_coefficients", coefficients_green, count+2);
+	write_double_array_to_file("colour_parameters/blue_coefficients", coefficients_blue, count+2);
 
 
 
-	///////////////////////////////////
 
+
+	//Test the polynomial function
+
+	int num_of_points =100;
+
+	double * image_red = malloc(num_of_points*sizeof(double));
+	double * image_green = malloc(num_of_points*sizeof(double));
+	double * image_blue = malloc(num_of_points*sizeof(double));
+	double * domain = malloc(num_of_points*sizeof(double));
+
+	for( index=0 ; index<num_of_points; index++ )
+	{
+		domain[index] = 0+ index*( (double)1/(num_of_points-1));
+		image_red[index] = interp_poly(coefficients_red, nodes, domain[index]);
+		image_green[index]= interp_poly(coefficients_green, nodes, domain[index]);
+		image_blue[index] = interp_poly(coefficients_blue, nodes, domain[index]);
+	}
+
+
+	// Write colour data to a csv
+
+
+	FILE * my_csv_file_pointer =fopen("colour_parameters/colour.csv", "w");
+
+
+	for( index = 0 ; index < num_of_points ; index++)
+	{
+		fprintf(my_csv_file_pointer, "%f, %f, %f, %f\n", domain[index], image_red[index], image_green[index], image_blue[index]);
+	}
+
+	fclose(my_csv_file_pointer);
 
 	return 0;
 
@@ -299,68 +365,4 @@ int main(int argc, char * * argv){
 
 
 
-/*
-
-
-	double *nodes, *y_values, *rhs ;
-
-	int length;
-
-
-	double lower[length-1], middle[length], upper[length-1];
-
-	middle[length-1]=4; // assign the last element of middle to 4. The other assignments will be handeled in the following loop
-
-
-	int i;
-	for( i = 0; i<(length-1) ; i++){
-		middle[i]=4;
-		lower[i]=1;
-		upper[i]=1;
-	}
-
-	// Now we have filled the diagonals...
-
-
-	// initialise an output array for the solved values
-
-	double *coefficients=malloc(sizeof(double)*(length+2));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	//Alright so here is my polynomial. I think it should actually be quite fast because there isn't any loops or logical chains
-
-double interp_poly(double * coefficients, double * nodes, double h, double x)
-{
-
-	int k = floor( (x - nodes[0])/h)+2; // We add two instead of one because arrays begin their index at 0. In the text we used indexing starting at -1.
-
-
-	return coefficient[k-2]*pow((2-(x-nodes[k-2])/h),3) + \
-		coefficient[k-1]*( 1 + 3*pow( (1-(x-nodes[k-1])/h),1) + 3*pow( (1-(x-nodes[k-1])/h),2) - 3*pow( 1 - (x-nodes[k-1])/h, 3) )+ \
-		coefficient[k]*(1+3*pow( 1+ (x-nodes[k])/h, 1) + 3*pow( 1+ (x-nodes[k])/h, 2)-3*pow(1+(x-nodes[k])/h,3))+ \
-		coefficient[k+1]*pow(2+(x-nodes[k+1])/h,3);
-}
-
-
-*/
