@@ -8,7 +8,7 @@ COMPILER = gcc
 
 # list of macros
 
-MACROS = -D COLOUR_CSV 
+#MACROS = -D COLOUR_CSV
 
 #List of textfiles to compile
 SBJS = polynomial_function.c
