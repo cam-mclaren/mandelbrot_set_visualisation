@@ -9,7 +9,7 @@ void print_double_array(double *array, int size){
 	int index;
 	for( index=0; index<size; index++)
 	{
-		fprintf(stdout, "%f\n", array[index]);
+		fprintf(stdout, "%f\n", array[index]); ////////////////////////////////////////////////////////////////////
 	}
 }
 
@@ -17,13 +17,22 @@ void print_double_array(double *array, int size){
 
 int main(int argc, char * * argv)
 {
-  // Coordinate to zoom in upon. (Centre of the final frame)
-  double x=130;
-  double y=200;
+
+	//read in the magnification power
+	double magnification_power = strtod(argv[1],NULL);
+	//magnification_factor
+	double magnification_factor=pow(10,magnification_power);
+	//set the rate of growth
+	double rate = 1.1;
+	// find the number of frames
+	long int n = floor(log(magnification_factor)/log(rate));
+	//set the coordinates to zoom in upon.
+  double x=;
+  double y=2;
 
   // left and right boundaries of the first frame
-  double left =100;
-  double right =300;
+  double left =-2;
+  double right =2;
 
   double first_frame_width = right - left;
 
@@ -33,7 +42,7 @@ int main(int argc, char * * argv)
   int y_pixel_count = 300;
 
 	// Zoom factor for each image.
-	double rate = 1.1;
+
 
   //Find aspect ratio
   double aspect_ratio = (double)y_pixel_count/x_pixel_count;
@@ -41,20 +50,18 @@ int main(int argc, char * * argv)
   // Find y boundaries for the intial frame
   double top = aspect_ratio*right;
   double bot = aspect_ratio*left;
-	fprintf(stdout,"top = %f.\nbot=%f.\n",top,bot);
+	fprintf(stdout,"top = %f.\nbot=%f.\n",top,bot);////////////////////////////////////////////////////////////////////
 
   // Now that we have both the horizontal and vertical boundaries we can find the centre of the first frame.
   double first_frame_centre_x = (right+left)/2;
   double first_frame_centre_y = (top+bot)/2;
 
-  // Define an array to see how big we can make the final frame so that it touches only one boundary
+  // Define an array to see how big we can make the centered frame so that it touches only one boundary
   double * closeness = malloc(4*sizeof(double));
   closeness[0]=x-left;
   closeness[1]=right-x;
   closeness[2]=(double)(y-bot)/aspect_ratio;
   closeness[3]=(double)(top-y)/aspect_ratio;
-
-	print_double_array(closeness,4);
 
   // find the minimum element of closeness
   int current_index=0;
@@ -68,13 +75,13 @@ int main(int argc, char * * argv)
       current_index=i;
     }
   }
-	fprintf(stdout,"The min is %f.\n", current_min);
+	fprintf(stdout,"The min is %f.\n", current_min);////////////////////////////////////////////////////////////////////
 
 
 // We can now calculate the width of the final frame
-double final_frame_width = 2*current_min;
+double centered_frame_width = 2*current_min;
 
-int n =floor(log(first_frame_width/final_frame_width)/log(rate))+1;
+//long int n =floor(log(first_frame_width/centered_frame_width)/log(rate))+1;
 // initialise arrays for the frame specs. We will unpack these backwards starting from n-1 and going to 0
 double * c_x=malloc(n*sizeof(double)); // centre x coordinate
 double * c_y= malloc(n*sizeof(double)); // centre y coordinate
@@ -82,20 +89,28 @@ double * multiplier = malloc(n*sizeof(double));  // Multiplier of the desired fi
 
 // We can define the gradient parametes of the 2 line equations
 double gradient_y = (first_frame_centre_y-y)/(first_frame_centre_x-x);
-double gradient_mult = (first_frame_width-final_frame_width)/(first_frame_centre_x-x);
+double gradient_mult = (first_frame_width-centered_frame_width)/(first_frame_centre_x-x);
 
-//populate multiplier array
+//determine the number of iterations required to centre
+
+int m = floor(log(first_frame_width/centered_frame_width)/log(rate))+1;
+
+if(m>n){m=n;} // This condition ensures we will not zoom past the magnification_factor
 
 // Populate frame parameter arrays
-for(i = 0 ; i < n; i++)
+for(i = 0 ; i < m; i++)
 {
-	if (i!=(n-1)){
-	multiplier[i]=final_frame_width*pow(rate,i);
-	} else {multiplier[i]=first_frame_width;}
-
-  c_x[i] = x+(double)1/gradient_mult*(multiplier[i]-final_frame_width);
+	multiplier[i]=first_frame_width/pow(rate,i);
+  c_x[i] = x+(double)1/gradient_mult*(multiplier[i]-centered_frame_width);
   c_y[i] = gradient_y*(c_x[i]-x)+y;
 
+}
+
+for(i=m; i<n; i++)
+{
+	multiplier[i]=first_frame_width/pow(rate,i);
+	c_x[i]=x;
+	c_y[i]=y;
 }
 
 
@@ -121,11 +136,14 @@ for( i = 0; i <y_pixel_count; i++)
 
 FILE * fptr = fopen("test.csv", "w");
 for(i = 0 ; i <n ; i++){
-
     fprintf(fptr, "%f, %f, %f\n", multiplier[i], c_x[i], c_y[i]);
-
 }
 fclose(fptr);
+
+
+
+/* Section 2 Creating the base vectors and colouring the set */ 
+
 
 
 
