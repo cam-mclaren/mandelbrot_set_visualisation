@@ -110,29 +110,29 @@ int main(int argc, char * * argv)
 	int x_pixels = 1080;
 	int y_pixels = 1350;
 
-	double aspect_ratio = (double)y_pixels/x_pixels;
+	long double aspect_ratio = (long double)y_pixels/x_pixels;
 
 	/* code x array and y array (actual number values) */
-	double center_y = atof(argv[2]);
-	double center_x = atof(argv[1]);
-	double x_width=atof(argv[3]);
-	double left = center_x-0.5*x_width;
-	double right = center_x+0.5*x_width; ;
+	long double center_y = atof(argv[2]);
+	long double center_x = atof(argv[1]);
+	long double x_width=atof(argv[3]);
+	long double left = center_x-0.5*x_width;
+	long double right = center_x+0.5*x_width; ;
 
 
-	double top = center_y + aspect_ratio*(center_x-left);
-	double bot = center_y - aspect_ratio*(right-center_x);
+	long double top = center_y + aspect_ratio*(center_x-left);
+	long double bot = center_y - aspect_ratio*(right-center_x);
 
-	double * x_array = malloc(x_pixels*sizeof(double));
-	double * y_array = malloc(y_pixels*sizeof(double));
+	long double * x_array = malloc(x_pixels*sizeof(long double));
+	long double * y_array = malloc(y_pixels*sizeof(long double));
 
 	int i;
-	double x_step = (right-left)/(x_pixels-1);
+	long double x_step = (right-left)/(x_pixels-1);
 	for( i = 0 ; i <x_pixels; i++)
 	{
 		x_array[i]=left+i*x_step;
 	}
-	double y_step = (top-bot)/(y_pixels-1);
+	long double y_step = (top-bot)/(y_pixels-1);
 	for( i = 0 ; i <y_pixels; i++)
 	{
 		y_array[i]=bot+i*y_step;
@@ -147,8 +147,8 @@ int main(int argc, char * * argv)
 /* Begin filling out the image data using the escape time algorithm and interp polies */
 int j; //x index
 //Escape time parameters
-int max_iter =500;
-double c_x, c_y, z_old_x, z_old_y, z_new_x, z_new_y;
+int max_iter =1000;
+long double c_x, c_y, z_old_x, z_old_y, z_new_x, z_new_y;
 int r,g, b;
 double speed;
 int iter_count;
