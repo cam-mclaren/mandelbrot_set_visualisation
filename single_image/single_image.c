@@ -96,8 +96,8 @@ int main(void)
 
 
 	//resolution
-	int x_pixels = 350;//1080;
-	int y_pixels = 350;//1350;
+	int x_pixels = 300;//1080;
+	int y_pixels = 300;//1350;
 
 	//aspect ratio
 	mpfr_t aspect_ratio;
@@ -106,9 +106,9 @@ int main(void)
 	mpfr_div_si(aspect_ratio, aspect_ratio, x_pixels, MPFR_RNDD);
 
 	// delare and initialse variables for boundarys and nudges
-	mpfr_t left, bottom, hoz_nudge, ver_nudge, half_height;
+	mpfr_t left, top, hoz_nudge, ver_nudge, half_height;
 	mpfr_init2(left, precision);
-	mpfr_init2(bottom, precision);
+	mpfr_init2(top, precision);
 	mpfr_init2(hoz_nudge, precision);
 	mpfr_init2(ver_nudge, precision);
 	mpfr_init2(half_height, precision);
@@ -120,7 +120,7 @@ int main(void)
 	mpfr_mul(half_height, aspect_ratio, width, MPFR_RNDD); //height calculated
 	mpfr_div_si(ver_nudge, half_height, (y_pixels-1), MPFR_RNDD); // vertical nudge calculated
 	mpfr_div_si(half_height, half_height, 2, MPFR_RNDD);
-	mpfr_sub(bottom, y_coordinate, half_height, MPFR_RNDD); // Bottom boundary calculated
+	mpfr_add(top, y_coordinate, half_height, MPFR_RNDD); // Top boundary calculated
 
 
 
@@ -137,7 +137,7 @@ int main(void)
 	mpfr_t current_x, current_y;
 	mpfr_init2(current_x, precision);
 	mpfr_init2(current_y, precision);
-	mpfr_set(current_y, bottom, MPFR_RNDD); //initialise current y
+	mpfr_set(current_y, top, MPFR_RNDD); //initialise current y
 
 
 	int r, g, b;
@@ -221,7 +221,7 @@ int main(void)
 
 			mpfr_add(current_x, current_x, hoz_nudge, MPFR_RNDD);
 		}
-		mpfr_add(current_y, current_y, ver_nudge, MPFR_RNDD);
+		mpfr_sub(current_y, current_y, ver_nudge, MPFR_RNDD);
 	}
 
 	printf("fine till here\n" );
@@ -238,7 +238,7 @@ int main(void)
 	mpfr_clear(real_temp);
 	mpfr_clear(hoz_nudge);
 	mpfr_clear(left);
-	mpfr_clear(bottom);
+	mpfr_clear(top);
 	mpfr_clear(ver_nudge);
 	printf("and here\n");
 	mpfr_free_cache();
