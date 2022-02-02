@@ -23,55 +23,65 @@ for functions intended to have a complex_big output.
 
  */
 
- typedef struct complex{
-   double real;
-   double imaginary;
- } complex;
-
- typedef struct complex_big{
-   mpfr_t real;
-   mpfr_t imaginary;
- } complex_big;
 
 
-
-void initialise_complex_big(complex_big number, int precision)
-{
-  mpfr_init2(number.real, precision);
-  mpfr_init2(number.imaginary, precision);
-}
-
-void set_complex_big(complex_big number, mpfr_t real, mpfr_t imaginary)
-{
-  mpfr_set(number.real, real, MPFR_RNDD);
-  mpfr_set(number.imaginary, imaginary, MPFR_RNDD);
-}
-
-void multiply_complex_big(complex_big answer, \
+//tested
+ void set_complex_big( complex_big * number, mpfr_t real, mpfr_t imaginary) //tested
+ {
+   printf("precision is %d\n", MY_PREC);
+   mpfr_init2((*number).real, MY_PREC);
+   mpfr_init2((*number).imaginary,MY_PREC);
+   mpfr_set((*number).real, real, MPFR_RNDD);
+   mpfr_set((*number).imaginary, imaginary, MPFR_RNDD);
+ }
+// tested
+void multiply_complex_big(complex_big * answer, \
   complex_big argument1, \
-  complex_big argument2, int precision){
-    mpfr_t temp;
-    mpfr_init2(temp, precision);
-    mpfr_mul(answer.real, argument1.real, argument2.real, MPFR_RNDD);
+  complex_big argument2){
+    mpfr_t temp, temp2, temp3;
+    mpfr_init2(temp, MY_PREC);
+    mpfr_init2(temp2,MY_PREC);
+    mpfr_init2(temp3,MY_PREC);
+    mpfr_mul(temp2, argument1.real, argument2.real, MPFR_RNDD);
     mpfr_mul(temp, argument1.imaginary, argument2.imaginary, MPFR_RNDD);
-    mpfr_sub(answer.real, answer.real, temp, MPFR_RNDD);
+    mpfr_sub(temp2, temp2, temp, MPFR_RNDD);
 
-    mpfr_mul(answer.imaginary, argument1.real, argument2.imaginary, MPFR_RNDD);
+    mpfr_mul(temp3, argument1.real, argument2.imaginary, MPFR_RNDD);
     mpfr_mul(temp, argument1.imaginary, argument2.real, MPFR_RNDD);
-    mpfr_add(answer.imaginary, answer.imaginary, temp, MPFR_RNDD);
+    mpfr_add((*answer).imaginary, temp3, temp, MPFR_RNDD);
+    mpfr_set((*answer).real, temp2, MPFR_RNDD);
     mpfr_clear(temp);
+    mpfr_clear(temp2);
+    mpfr_clear(temp3);
+
+
   }
 
-  void add_complex_big(complex_big answer,\
+//tested
+  void square_complex_big(complex_big * answer, \
+    complex_big argument1){
+      mpfr_t temp;
+      mpfr_init2(temp, MY_PREC);
+      mpfr_mul(temp, argument1.real, argument1.imaginary, MPFR_RNDD);
+      mpfr_mul_ui(temp,temp,2, MPFR_RNDD);
+      mpfr_pow_ui((*answer).real, argument1.real, 2, MPFR_RNDD);
+      mpfr_pow_ui((*answer).imaginary, argument1.imaginary, 2, MPFR_RNDD);
+      mpfr_sub((*answer).real, (*answer).real, (*answer).imaginary, MPFR_RNDD);
+      mpfr_set((*answer).imaginary, temp, MPFR_RNDD);
+    }
+
+
+// tested
+  void add_complex_big(complex_big * answer,\
                        complex_big arg1,\
                        complex_big arg2)
   {
 
-    mpfr_add(answer.real, arg1.real, arg2.real, MPFR_RNDD);
-    mpfr_add(answer.imaginary, arg1.imaginary, arg2.imaginary, MPFR_RNDD);
+    mpfr_add((*answer).real, arg1.real, arg2.real, MPFR_RNDD);
+    mpfr_add((*answer).imaginary, arg1.imaginary, arg2.imaginary, MPFR_RNDD);
   }
 
-
+//tested
 complex add_complex(complex arg1, complex arg2){
   complex output;
   output.real = arg1.real + arg2.real;
@@ -81,7 +91,7 @@ complex add_complex(complex arg1, complex arg2){
 }
 
 
-
+//tested
 complex multiply_complex(complex arg1, complex arg2)
 {
   complex answer;
@@ -92,32 +102,43 @@ complex multiply_complex(complex arg1, complex arg2)
 }
 
 
-complex multiply_complex_big_and_small(struct complex_big big_arg, \
+void fsq_complex(complex * arg)
+{
+  double temp = 2*(*arg).real*(*arg).imaginary;
+  (*arg).real=(*arg).real*(*arg).real-(*arg).imaginary*(*arg).imaginary;
+  (*arg).imaginary=temp;
+}
+
+
+
+
+//tested
+complex multiply_complex_big_and_small(complex_big * big_arg, \
   complex small_arg)
 {
   complex reduced, answer;
-  reduced.real = mpfr_get_d(big_arg.real, MPFR_RNDD);
-  reduced.imaginary = mpfr_get_d(big_arg.imaginary, MPFR_RNDD);
+  reduced.real = mpfr_get_d((*big_arg).real, MPFR_RNDD);
+  reduced.imaginary = mpfr_get_d((*big_arg).imaginary, MPFR_RNDD);
 
   answer= multiply_complex(reduced, small_arg);
 
   return answer;
 }
 
-
-complex add_complex_big_and_small(complex_big big_arg, \
+//tested
+complex add_complex_big_and_small(complex_big * big_arg, \
   complex small_arg)
 {
   complex reduced, answer;
-  reduced.real = mpfr_get_d(big_arg.real, MPFR_RNDD);
-  reduced.imaginary = mpfr_get_d(big_arg.imaginary, MPFR_RNDD);
+  reduced.real = mpfr_get_d((*big_arg).real, MPFR_RNDD);
+  reduced.imaginary = mpfr_get_d((*big_arg).imaginary, MPFR_RNDD);
 
   answer= add_complex(reduced, small_arg);
-
   return answer;
 }
 
-complex scale_complex(double scale_parameter, complex argument)
+//tested
+complex scale_complex(double scale_parameter, complex argument) //tested
 {
   complex output;
 
