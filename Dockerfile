@@ -1,9 +1,9 @@
-from alpine
+FROM alpine
 
-copy . /mandelbrot_set_visualisation
+VOLUME . /mandelbrot_set_visualisation
 
-run apk add build-base
-run apk add gmp-dev
-run apk add mpfr-dev
+RUN apk add build-base
+RUN apk add gmp-dev
+RUN apk add mpfr-dev
 
 
