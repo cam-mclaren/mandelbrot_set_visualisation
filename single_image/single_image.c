@@ -49,21 +49,21 @@ int main(void)
 		fprintf(stderr, "Failed to open file\n");
 		return EXIT_FAILURE;
 	}
-	read_status=mpfr_inp_str(x_coordinate, fptr, 10, MPFR_RNDD);
+	read_status=mpfr_inp_str(x_coordinate, fptr, 10, MPFR_RNDD); //read centre x coordinate
 	if(read_status==0)
 	{
 		fprintf(stderr,"Error. mpfr_inp_str() failed to read x_coordinate\n");
 		fclose(fptr);
 		return EXIT_FAILURE;
 	}
-	read_status=mpfr_inp_str(y_coordinate, fptr, 10, MPFR_RNDD);
+	read_status=mpfr_inp_str(y_coordinate, fptr, 10, MPFR_RNDD); // read centre y coordinate
 	if(read_status==0)
 	{
 		fprintf(stderr,"Error. mpfr_inp_str() failed to read y_coordinate\n");
 		fclose(fptr);
 		return EXIT_FAILURE;
 	}
-	read_status=mpfr_inp_str(width, fptr, 10, MPFR_RNDD);
+	read_status=mpfr_inp_str(width, fptr, 10, MPFR_RNDD); // Read width
 	if(read_status==0)
 	{
 		fprintf(stderr,"Error. mpfr_inp_str() failed to read width\n");
@@ -152,6 +152,62 @@ int main(void)
 	mpfr_init2(x_square, precision);
 	mpfr_init2(y_square, precision);
 
+
+	// We would have a max number of y pixels
+	// We INITIALIS A PLAIN MUTEX mtx
+	// int * next_unprocessed_row;
+	// *next_unprocessed_row = 0;
+	// We have  a function
+	// int /* returns a status code*/ evaluate_row(void * args)
+	/* {	
+			
+			int iter_catch = 0; // A saftey limit on the while loop. In theory the loop will never reach its exit condition;
+			
+			while (iter_catch < y_pixels)
+			{ 
+				iter_catch++;
+				
+				int * nxt_row = (int*)args;  // Get ready to read arg by reference
+				int this_row;
+				mtx_lock(&mtx);
+				
+					this_row = *nxt_row;
+
+					if (this_row < ypixels)
+					{
+						*nxt_row = this_row+1;
+					}
+					else
+					{
+						printf("Thread Function Complete\n");
+						return 0;
+					}
+				mtx_unlock(&mtx);
+
+				//At this point we can start to work on the row. 
+
+				y_value = y_array[this_row];
+
+				for x_value in x_array;
+				{
+					complex_constant = make_complex_usin_GNU_MPC;
+					complex_z = make_complex_using_GNU_MPC(x_value,y_value);
+					complex_next_z = make_complex_using_GNU_MPC(x_value,_y_value);
+
+					while (inner_product < 4 and is_less_than_max_iterations)
+					{
+						complex_next_z = square(complex_z)
+						complex_next_z = sum(complex_next_z, complex_constant)
+						complex_z = complex_next_z
+						inner_product = inner_product 
+					}
+				}
+
+
+
+			}
+
+	}*/
 
 	int i, j;
 	for( i = 0; i<y_pixels; i++)
