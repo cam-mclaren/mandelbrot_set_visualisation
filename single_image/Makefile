@@ -19,10 +19,10 @@ OBJECT_FILES = $(TARGET_FILES:%.c=%.o)
 SECONDARY_OBJECT_FILES=$(SECONDARY_TARGET:%.c=%.o) 
 
 main: $(OBJECT_FILES) 
-	$(COMPILER) $(LINKER_FLAGS) $(OBJECT_FILES) -o main.exe
+	$(COMPILER)  $(OBJECT_FILES)  $(LINKER_FLAGS) -o main.exe
 
 compile:
-	$(COMPLIER) $(COMPILER_FLAGS) -c $(TARGET_FILES)
+	$(COMPILER) $(COMPILER_FLAGS) -c $(TARGET_FILES)
 
 runmain: main.exe
 	./main.exe

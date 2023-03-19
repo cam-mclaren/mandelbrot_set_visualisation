@@ -96,8 +96,8 @@ int main(void)
 
 
 	//resolution
-	int x_pixels = 300;//1080;
-	int y_pixels = 300;//1350;
+	int x_pixels = 1080;
+	int y_pixels = 1350;
 
 	//aspect ratio
 	mpfr_t aspect_ratio;
@@ -168,7 +168,7 @@ int main(void)
 			while( (iter_count < max_iter)&&(inner_product<4))
 			{
 				// f(z) = z^2 + c
-				// (x+yi)(x+yi) = x^2 - y^2 + (2xy)
+				// (x+yi)(x+yi) = x^2 - y^2 + (2xy)i
 				//Real component calculation store in real_temp
 				mpfr_pow_si(x_square, real_component, 2, MPFR_RNDD);
 				mpfr_pow_si(y_square, imaginary_component, 2, MPFR_RNDD);
