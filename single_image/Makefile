@@ -38,4 +38,4 @@ aux_compile:
 	$(COMPILER) $(COMPILER_FLAGS) -c $(SECONDARY_TARGET)
 
 nextcentre:
-	$(COMPILER) $(LINKER_FLAGS) nextcentre.c -o next.exe
+	$(COMPILER)  nextcentre.c $(LINKER_FLAGS) -o next.exe

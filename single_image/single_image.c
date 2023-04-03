@@ -23,7 +23,16 @@ int count_doubles_in_file(const char * path);
 
 void fill_double_array_from_file(const char * path, int size, double * target_array);
 
-
+//int evaluate_row( void * row_number);
+/*
+* So its outputs go in image_data
+* It can be fed a void pointer which it can cast to an int pointer. It reads this int pointer so it knows 
+* what row it is working on. It increments this pointer once it is done. 
+*
+* Now it also has to take in the y value somehow. It then has to iterate over the x values. 
+*
+*
+*/
 // Instead maybe it reads targets from a file.
 
 
@@ -37,7 +46,7 @@ int main(void)
 	// Read from file the coordinates
 
 	mpfr_t x_coordinate, y_coordinate, width;
-	int precision=665;
+	int precision=1065;
 	mpfr_init2(x_coordinate, precision);
 	mpfr_init2(y_coordinate, precision);
 	mpfr_init2(width, precision);
@@ -96,8 +105,8 @@ int main(void)
 
 
 	//resolution
-	int x_pixels = 1080;
-	int y_pixels = 1350;
+	int x_pixels = 200;
+	int y_pixels = 200;
 
 	//aspect ratio
 	mpfr_t aspect_ratio;
@@ -123,6 +132,45 @@ int main(void)
 	mpfr_add(top, y_coordinate, half_height, MPFR_RNDD); // Top boundary calculated
 
 
+	// Populate y values used. //Array is backwards atm :'-(
+	//   __      __
+
+	//    0		 0
+	//    *	  ^  *
+	//	  *      *
+	//     ______
+	/* 
+	*/
+	printf("top is:\n");
+	mpfr_fprintf(stdout,"%5.50Rf\n",top);
+	int index;
+	mpfr_t y_val, y_increment;
+	mpfr_t y_values[y_pixels];
+	mpfr_init2(y_val, precision);
+	mpfr_init2(y_increment, precision);
+	for (index = y_pixels - 1; index >= 0 ; index -- )
+	{
+		mpfr_mul_si(y_increment, ver_nudge, (y_pixels -1 - index), MPFR_RNDD);
+		mpfr_sub(y_val, top, y_increment, MPFR_RNDD);
+		mpfr_init2(y_values[index], precision);
+		mpfr_set(y_values[index], y_val, MPFR_RNDD);
+		mpfr_fprintf(stdout,"%5.50Rf\n",y_values[index]);
+	}
+	// Populate x values used. (Not yet utilised)
+	mpfr_t x_val, x_increment;
+	mpfr_t x_values[x_pixels];
+	mpfr_init2(x_val, precision);
+	mpfr_init2(x_increment, precision);
+	for (index = 0 ; index < x_pixels; index ++ )
+	{
+		mpfr_mul_si(x_increment, hoz_nudge, index, MPFR_RNDD);
+		mpfr_add(x_val, left, x_increment, MPFR_RNDD);
+		mpfr_init2(x_values[index], precision);
+		mpfr_set(x_values[index], x_val, MPFR_RNDD);
+		mpfr_fprintf(stdout,"%5.50Rf\n",x_values[index]);
+	}
+
+
 
 	mpfr_clear(half_height);
 	mpfr_clear(aspect_ratio);
@@ -142,7 +190,7 @@ int main(void)
 
 	int r, g, b;
 	double speed, inner_product;
-	int max_iter=2000;
+	int max_iter=4000;
 	int iter_count=0;
 	mpfr_t real_component, imaginary_component, x_square, y_square, real_temp;
 	mpfr_t c_x, c_y;
@@ -154,12 +202,13 @@ int main(void)
 
 
 	int i, j;
-	for( i = 0; i<y_pixels; i++)
-	{
+	for( i = (y_pixels - 1); i >= 0 ; i--)
+	{	
+		mpfr_set(current_y, y_values[i], MPFR_RNDD);
 		printf("y=%d\n",i);
-		mpfr_set(current_x, left, MPFR_RNDD);
 		for(j = 0; j< x_pixels; j++)
-		{
+		{	
+			mpfr_set(current_x, x_values[j], MPFR_RNDD);
 			mpfr_set(real_component, current_x, MPFR_RNDD); //  Initialise x value
 			mpfr_set(imaginary_component, current_y, MPFR_RNDD); // Initialise y value
 			// run time escape algorithm
@@ -214,14 +263,12 @@ int main(void)
 			//printf("%d, %d, %d\n", r,g,b);
 
 
-				*(image_data+i*x_pixels*3 + 3*j+0)=(unsigned char)r;
-				*(image_data+i*x_pixels*3 + 3*j+1)=(unsigned char)g;
-				*(image_data+i*x_pixels*3 + 3*j+2)=(unsigned char)b;
+				*(image_data+(y_pixels - 1 - i)*x_pixels*3 + 3*j+0)=(unsigned char)r;
+				*(image_data+(y_pixels - 1 - i)*x_pixels*3 + 3*j+1)=(unsigned char)g;
+				*(image_data+(y_pixels - 1 - i)*x_pixels*3 + 3*j+2)=(unsigned char)b;
 			}
 
-			mpfr_add(current_x, current_x, hoz_nudge, MPFR_RNDD);
 		}
-		mpfr_sub(current_y, current_y, ver_nudge, MPFR_RNDD);
 	}
 
 	printf("fine till here\n" );

@@ -20,13 +20,13 @@ int main(int argc, char * * argv){
     fprintf(stderr, "Error. Incompatible number of arguments to find new centre.\n");
     return EXIT_FAILURE;
   }
-  int x_pixels = 2000;//1080;
-  int y_pixels = 2000;//1350;
+  int x_pixels = 400;//1080;
+  int y_pixels = 400;//1350;
 
   // Read from file the coordinates
 
   mpfr_t x_coordinate, y_coordinate, width;
-  int precision=665;
+  int precision=1065;
   mpfr_init2(x_coordinate, precision);
   mpfr_init2(y_coordinate, precision);
   mpfr_init2(width, precision);
@@ -100,7 +100,8 @@ int main(int argc, char * * argv){
   /* Calculate offset */
 
   int x_pixel_target=atoi(argv[1]);
-  int y_pixel_target=atoi(argv[2]);
+  int y_pixel_target= y_pixels - atoi(argv[2]);
+  printf("y_pixel_target = %d\n", y_pixel_target);
 
   mpfr_t x_offset, y_offset;
   mpfr_init2(x_offset, precision);
@@ -125,8 +126,8 @@ int main(int argc, char * * argv){
 
 
   //print this out to see if it works.
-  mpfr_fprintf(stdout, "%.30Rf\n", new_centre_x );
-  mpfr_fprintf(stdout, "%.30Rf\n", new_centre_y );
+  mpfr_fprintf(stdout, "%.50Rf\n", new_centre_x );
+  mpfr_fprintf(stdout, "%.50Rf\n", new_centre_y );
 
 
   return 0;
