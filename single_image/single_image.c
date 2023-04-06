@@ -7,8 +7,21 @@
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+#include <threads.h>
+#define MY_PRECISION 665
 
 
+
+typedef struct image_params 
+{
+	int y_pixels;
+	int x_pixels;
+	int * row_count;
+	unsigned char * image_data;
+	mpfr_t * x_array;
+	mpfr_t * y_array;
+	mtx_t * mutex_ptr;
+} image_params;
 
 // You will need to import the colour arrays you need.
 
@@ -23,21 +36,97 @@ int count_doubles_in_file(const char * path);
 
 void fill_double_array_from_file(const char * path, int size, double * target_array);
 
-//int evaluate_row( void * row_number);
-/*
-* So its outputs go in image_data
-* It can be fed a void pointer which it can cast to an int pointer. It reads this int pointer so it knows 
-* what row it is working on. It increments this pointer once it is done. 
-*
-* Now it also has to take in the y value somehow. It then has to iterate over the x values. 
-*
-*
-*/
+int worker_function( void * thread_arg /* void pointer to int */)
+{/*
+	* So its outputs go in image_data
+	* It can be fed a void pointer which it can cast to an int pointer. It reads this int pointer so it knows 
+	* what row it is working on. It increments this pointer once it is done. 
+	*
+	* Now it also has to take in the y value somehow. It then has to iterate over the x values. 
+	*/
+
+	// Declare local copies of necessary variables.
+	int current_row;
+	mpfr_t current_y, current_x;
+	int r, g, b;
+	double speed, inner_product;
+	int max_iter=4000;
+	int iter_count=0;
+	mpfr_t real_component, imaginary_component, x_square, y_square, real_temp;
+	mpfr_t c_x, c_y;
+	mpfr_init2(real_component, MY_PRECISION);
+	mpfr_init2(imaginary_component, MY_PRECISION);
+	mpfr_init2(real_temp, MY_PRECISION);
+	mpfr_init2(x_square, MY_PRECISION);
+	mpfr_init2(y_square, MY_PRECISION);
+	mpfr_init2(current_y,MY_PRECISION);
+	mpfr_init2(current_x,MY_PRECISION);
+
+
+
+
+
+	image_params *args = (image_params*)thread_arg;
+
+
+	mtx_lock(args->mutex_ptr);
+	current_row = *(args->row_count); // read current row
+
+	if (current_row >= args->y_pixels)
+	{	
+		printf("Worker function is returning\n");
+		return 0;
+	}
+	mtx_unlock(args->mutex_ptr);
+
+	mpfr_set(current_y, args->y_array[current_row], MPFR_RNDD);
+
+
+	printf("Writing X values from worker function\n");
+	int j;
+	for(j = 0; j< args->x_pixels; j++)
+			{	
+
+				mpfr_fprintf(stdout,"%5.50Rf\n",args->x_array[j]);
+				// mpfr_set(current_x, args->x_array[j], MPFR_RNDD);
+				// mpfr_set(real_component, current_x, MPFR_RNDD); //  Initialise x value
+				// mpfr_set(imaginary_component, current_y, MPFR_RNDD); // Initialise y value
+				// run time escape algorithm
+				// inner_product=0;
+				// iter_count=0;
+				// while( (iter_count < max_iter)&&(inner_product<4))
+				// {
+					// f(z) = z^2 + c
+					// (x+yi)(x+yi) = x^2 - y^2 + (2xy)i
+					//Real component calculation store in real_temp
+					// mpfr_pow_si(x_square, real_component, 2, MPFR_RNDD);
+					// mpfr_pow_si(y_square, imaginary_component, 2, MPFR_RNDD);
+					// mpfr_sub(real_temp, x_square, y_square, MPFR_RNDD);
+					//imaginary_component
+					// mpfr_mul(imaginary_component, imaginary_component, real_component, MPFR_RNDD);
+					// mpfr_mul_si(imaginary_component, imaginary_component, 2, MPFR_RNDD); // imaginary component calculate
+					// add c
+					// mpfr_add(real_component, real_temp, current_x, MPFR_RNDD);
+					// mpfr_add(imaginary_component, imaginary_component, current_y, MPFR_RNDD);
+					//find the inner product
+					// mpfr_pow_si(x_square, real_component, 2, MPFR_RNDD);
+					// mpfr_pow_si(y_square, imaginary_component, 2, MPFR_RNDD);
+					// mpfr_add(real_temp, x_square, y_square, MPFR_RNDD);
+					// inner_product=mpfr_get_d(real_temp, MPFR_RNDD);
+
+					//if(iter_count%10==0)
+					//{
+						//printf("iter_count=%d, i=%d , j=%d \n",iter_count, i, j);
+					//}
+					// iter_count++;
+
+				// }
+
+
+			}
+}
 // Instead maybe it reads targets from a file.
 
-
-// x coordinate
-// y coordinate
 
 
 int main(void)
@@ -47,9 +136,9 @@ int main(void)
 
 	mpfr_t x_coordinate, y_coordinate, width;
 	int precision=1065;
-	mpfr_init2(x_coordinate, precision);
-	mpfr_init2(y_coordinate, precision);
-	mpfr_init2(width, precision);
+	mpfr_init2(x_coordinate, MY_PRECISION);
+	mpfr_init2(y_coordinate, MY_PRECISION);
+	mpfr_init2(width, MY_PRECISION);
 	int read_status;
 
 	FILE * fptr=fopen("image_parameters.txt", "r");
@@ -108,19 +197,34 @@ int main(void)
 	int x_pixels = 200;
 	int y_pixels = 200;
 
+	// declare and initialise mutex
+	mtx_t  mutex;
+	if (mtx_init(&mutex, mtx_plain) != thrd_success)
+	{
+		fprintf(stderr, "Error initialising mutex on line %d\n", __LINE__);
+		return -1;
+	}
+	fprintf(stdout, "Mutex successfully initialised at line %d\n", __LINE__);
+
+	//define integer representing number of rows in image processed. Cast this as 
+	//a void pointer. 
+	int rows_processed = 0;
+	void * thread_argument = (void*)&rows_processed;
+
+
 	//aspect ratio
 	mpfr_t aspect_ratio;
-	mpfr_init2(aspect_ratio, precision);
+	mpfr_init2(aspect_ratio, MY_PRECISION);
 	mpfr_set_si(aspect_ratio, y_pixels, MPFR_RNDD);
 	mpfr_div_si(aspect_ratio, aspect_ratio, x_pixels, MPFR_RNDD);
 
 	// delare and initialse variables for boundarys and nudges
 	mpfr_t left, top, hoz_nudge, ver_nudge, half_height;
-	mpfr_init2(left, precision);
-	mpfr_init2(top, precision);
-	mpfr_init2(hoz_nudge, precision);
-	mpfr_init2(ver_nudge, precision);
-	mpfr_init2(half_height, precision);
+	mpfr_init2(left, MY_PRECISION);
+	mpfr_init2(top, MY_PRECISION);
+	mpfr_init2(hoz_nudge, MY_PRECISION);
+	mpfr_init2(ver_nudge, MY_PRECISION);
+	mpfr_init2(half_height, MY_PRECISION);
 
 	mpfr_div_ui(hoz_nudge, width, 2, MPFR_RNDD); // use hoz nudge to store half width
 	mpfr_sub(left, x_coordinate, hoz_nudge, MPFR_RNDD);  // left calculated
@@ -146,28 +250,28 @@ int main(void)
 	int index;
 	mpfr_t y_val, y_increment;
 	mpfr_t y_values[y_pixels];
-	mpfr_init2(y_val, precision);
-	mpfr_init2(y_increment, precision);
+	mpfr_init2(y_val, MY_PRECISION);
+	mpfr_init2(y_increment, MY_PRECISION);
 	for (index = y_pixels - 1; index >= 0 ; index -- )
 	{
 		mpfr_mul_si(y_increment, ver_nudge, (y_pixels -1 - index), MPFR_RNDD);
 		mpfr_sub(y_val, top, y_increment, MPFR_RNDD);
-		mpfr_init2(y_values[index], precision);
+		mpfr_init2(y_values[index], MY_PRECISION);
 		mpfr_set(y_values[index], y_val, MPFR_RNDD);
 		mpfr_fprintf(stdout,"%5.50Rf\n",y_values[index]);
 	}
 	// Populate x values used. (Not yet utilised)
 	mpfr_t x_val, x_increment;
 	mpfr_t x_values[x_pixels];
-	mpfr_init2(x_val, precision);
-	mpfr_init2(x_increment, precision);
+	mpfr_init2(x_val, MY_PRECISION);
+	mpfr_init2(x_increment, MY_PRECISION);
 	for (index = 0 ; index < x_pixels; index ++ )
 	{
 		mpfr_mul_si(x_increment, hoz_nudge, index, MPFR_RNDD);
 		mpfr_add(x_val, left, x_increment, MPFR_RNDD);
-		mpfr_init2(x_values[index], precision);
+		mpfr_init2(x_values[index], MY_PRECISION);
 		mpfr_set(x_values[index], x_val, MPFR_RNDD);
-		mpfr_fprintf(stdout,"%5.50Rf\n",x_values[index]);
+		// mpfr_fprintf(stdout,"%5.50Rf\n",x_values[index]);
 	}
 
 
@@ -183,8 +287,8 @@ int main(void)
 	unsigned char * image_data = calloc(y_pixels*x_pixels*3, sizeof(unsigned char));
 
 	mpfr_t current_x, current_y;
-	mpfr_init2(current_x, precision);
-	mpfr_init2(current_y, precision);
+	mpfr_init2(current_x, MY_PRECISION);
+	mpfr_init2(current_y, MY_PRECISION);
 	mpfr_set(current_y, top, MPFR_RNDD); //initialise current y
 
 
@@ -194,12 +298,24 @@ int main(void)
 	int iter_count=0;
 	mpfr_t real_component, imaginary_component, x_square, y_square, real_temp;
 	mpfr_t c_x, c_y;
-	mpfr_init2(real_component, precision);
-	mpfr_init2(imaginary_component, precision);
-	mpfr_init2(real_temp, precision);
-	mpfr_init2(x_square, precision);
-	mpfr_init2(y_square, precision);
+	mpfr_init2(real_component, MY_PRECISION);
+	mpfr_init2(imaginary_component, MY_PRECISION);
+	mpfr_init2(real_temp, MY_PRECISION);
+	mpfr_init2(x_square, MY_PRECISION);
+	mpfr_init2(y_square, MY_PRECISION);
 
+
+	image_params thread_parameters;
+	thread_parameters.x_pixels = x_pixels;
+	thread_parameters.y_pixels = y_pixels;
+	thread_parameters.row_count = &rows_processed;
+	thread_parameters.mutex_ptr = &mutex;
+	thread_parameters.image_data = image_data;
+	thread_parameters.y_array = y_values;
+	thread_parameters.x_array = x_values;
+
+	worker_function( (void*) &thread_parameters);
+	
 
 	int i, j;
 	for( i = (y_pixels - 1); i >= 0 ; i--)
@@ -247,7 +363,8 @@ int main(void)
 
 			if (speed==1)
 			{
-
+					// Does nothing. Pixel is initialised as black.
+					// This is because calloc is zero initialised. (RGB 000 000 000 is black)
 			}else
 			{
 				r = floor(interp_poly(red_coefficients, nodes, speed));
@@ -274,7 +391,7 @@ int main(void)
 	printf("fine till here\n" );
 	stbi_write_jpg("image.jpg",x_pixels,y_pixels,3,image_data,100);
 	printf("and here\n");
-	free(image_data);
+	free((void*)image_data);
 	mpfr_clear(current_x);
 	mpfr_clear(current_y);
 	mpfr_clear(x_square);
