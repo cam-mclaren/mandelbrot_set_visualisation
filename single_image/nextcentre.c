@@ -20,8 +20,8 @@ int main(int argc, char * * argv){
     fprintf(stderr, "Error. Incompatible number of arguments to find new centre.\n");
     return EXIT_FAILURE;
   }
-  int x_pixels = 400;//1080;
-  int y_pixels = 400;//1350;
+  int x_pixels = 1280;//1080;
+  int y_pixels = 720;//1350;
 
   // Read from file the coordinates
 

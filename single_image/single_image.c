@@ -8,8 +8,10 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #include <threads.h>
+#include <time.h>
+#include <sys/time.h>
 #define MY_PRECISION 665
-#define THREAD_NUMBER 3
+#define THREAD_NUMBER 10 
 
 
 typedef struct image_params 
@@ -28,6 +30,16 @@ typedef struct image_params
 	//int coefficient_count;
 } image_params;
 
+/* This is a wrapper around the arguments common to all threads. This allows the threads to identify themselves 
+when logging their progress.*/
+typedef struct thrd_awrp
+{
+	char thread_name[20];
+	int thread_index;
+	image_params * args;
+} thrd_awrp;
+
+
 // You will need to import the colour arrays you need.
 
 // A function to print arrays of doubles
@@ -41,7 +53,7 @@ int count_doubles_in_file(const char * path);
 
 void fill_double_array_from_file(const char * path, int size, double * target_array);
 
-int worker_function( void * thread_arg /* void pointer to int */)
+int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 {/*
 	* So its outputs go in image_data
 	* It can be fed a void pointer which it can cast to an int pointer. It reads this int pointer so it knows 
@@ -79,9 +91,12 @@ int worker_function( void * thread_arg /* void pointer to int */)
 	}
 
 
+	thrd_awrp thread_argument_wrapper = *(thrd_awrp*)wrapper_arg;	
 
 
-	image_params *args = (image_params*)thread_arg;
+	image_params *args = thread_argument_wrapper.args;
+	printf("Thread %d is active\n", thread_argument_wrapper.thread_index);
+	printf("Thread name is %s\n", thread_argument_wrapper.thread_name);
 
 
 	int count = 0;
@@ -94,22 +109,22 @@ int worker_function( void * thread_arg /* void pointer to int */)
 		mtx_lock(args->mutex_ptr);
 		current_row = *(args->row_count); // read current row
 		printf("current row = %d\n", current_row);
-		if (current_row == args->y_pixels -1)
+		if (current_row >= args->y_pixels -1)
 		{	
 			printf("Worker function is returning\n");
 			free_mpfr_vars();		
+			mtx_unlock(args->mutex_ptr);
 			return 0;
 		} else
 		{
 			*(args->row_count) = current_row+1;
-			printf("incrementing\n");
+			// printf("incrementing\n");
 		}
 		mtx_unlock(args->mutex_ptr);
 
 		mpfr_set(current_y, args->y_array[current_row], MPFR_RNDD);
 
-		mpfr_fprintf(stdout,"%5.50Rf\n",current_y);
-		printf("Writing X values from worker function\n");
+		// mpfr_fprintf(stdout,"%5.50Rf\n",current_y);
 		int j;
 		for(j = 0; j< args->x_pixels; j++)
 		{	
@@ -186,6 +201,13 @@ int main(void)
 
 	// Read from file the coordinates
 
+	//Wall clock time
+	struct timeval tv;
+	struct timezone tz;
+	gettimeofday(&tv, &tz);
+
+	// Times main()
+	clock_t begin = clock();
 	mpfr_t x_coordinate, y_coordinate, width;
 	int precision=1065;
 	mpfr_init2(x_coordinate, MY_PRECISION);
@@ -246,8 +268,8 @@ int main(void)
 
 
 	//resolution
-	int x_pixels = 200;
-	int y_pixels = 200;
+	int x_pixels = 1280;
+	int y_pixels = 720;
 
 	// declare and initialise mutex
 	mtx_t  mutex;
@@ -334,6 +356,8 @@ int main(void)
 	// define image_data array
 	unsigned char * image_data = calloc(y_pixels*x_pixels*3, sizeof(unsigned char));
 
+	thrd_t threads[THREAD_NUMBER];
+
 
 
 	image_params thread_parameters; // thread_parameters is basically how the main function can interface with the
@@ -351,7 +375,44 @@ int main(void)
 	thread_parameters.green_coefficients = green_coefficients; 
 	thread_parameters.blue_coefficients = blue_coefficients;
 	thread_parameters.nodes = nodes;	
-	worker_function( (void*) &thread_parameters);
+
+
+
+
+
+	int thread_index;
+	thrd_awrp wrapper_arg;
+	char * thread_int_str[20];
+	char * thread_name_str[THREAD_NUMBER][20];
+	
+	for (thread_index = 0; thread_index < THREAD_NUMBER; thread_index++)
+	{	
+		sprintf((char*)thread_name_str[thread_index], "Thread_%d", thread_index);
+		wrapper_arg.thread_index = 0;
+		strcpy(wrapper_arg.thread_name, (char*)thread_name_str[thread_index]);
+		wrapper_arg.args = &thread_parameters;
+
+		if (thrd_create(&threads[thread_index],worker_function, (void*) &wrapper_arg) != thrd_success)
+		{
+			fprintf(stderr, "Error creating thread %d.\n", thread_index);
+			return -99;
+		}
+		else {
+			printf("Successfully started thread %d.\n", thread_index);
+		}
+	}
+
+	for (thread_index = 0; thread_index < THREAD_NUMBER; thread_index++)
+	{
+		thrd_join(threads[thread_index], NULL);
+		printf("Thread %d joined.\n", thread_index);
+	}
+
+	
+
+
+
+
 	
 
 	stbi_write_jpg("image.jpg",x_pixels,y_pixels,3,image_data,100);
@@ -363,6 +424,17 @@ int main(void)
 	mpfr_free_cache();
 	mtx_destroy(&mutex);
 
+	clock_t end = clock();
+
+	double time_spent = (double)(end-begin)/CLOCKS_PER_SEC;
+	printf("Main() execution time was %lf\n", time_spent);
+
+
+	struct timeval tv2;
+	struct timezone tz2;
+	gettimeofday(&tv2, &tz2);
+
+	printf("Wall clock time elapsed is %lf.\n", (double)(tv2.tv_sec - tv.tv_sec));
 
 	return 0;
 }
