@@ -32,12 +32,15 @@ function createServer(socket){
 			if (msg === 'here come dat boi'){
 				//stream.write('Kill yourself.')
 				}
-			stream.write(msg)
+			//stream.write(msg)
 
 			});
 
 	})
-	.listen(socket)
+	.listen(socket, () =>	{
+			fs.chmodSync(socket, 777);
+		}
+	)
 	.on('connection', function(socket){
 		console.log('Client connected');
 		//console.log('Send boop test');

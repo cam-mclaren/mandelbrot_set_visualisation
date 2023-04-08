@@ -1,18 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+
 #include <gmp.h>
 #include <mpfr.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
+
 #include <threads.h>
+
 #include <time.h>
 #include <sys/time.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/stat.h>
+
 #define MY_PRECISION 665
 #define THREAD_NUMBER 10 
-
+#define SOCKET_PATH "/usr/project/sockets/socket.sock"
 
 typedef struct image_params 
 {
@@ -27,7 +39,6 @@ typedef struct image_params
 	double * green_coefficients;
 	double * blue_coefficients;		
 	double * nodes;
-	//int coefficient_count;
 } image_params;
 
 /* This is a wrapper around the arguments common to all threads. This allows the threads to identify themselves 
@@ -67,7 +78,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 	mpfr_t current_y, current_x;
 	int r, g, b;
 	double speed, inner_product;
-	int max_iter=4000;
+	int max_iter=100;
 	int iter_count=0;
 	mpfr_t real_component, imaginary_component, x_square, y_square, real_temp;
 	mpfr_t c_x, c_y;
@@ -205,9 +216,99 @@ int main(void)
 	struct timeval tv;
 	struct timezone tz;
 	gettimeofday(&tv, &tz);
-
 	// Times main()
 	clock_t begin = clock();
+
+	//Unix socket 
+	
+	int len;
+	int rc;	
+	int sockfd;
+	struct sockaddr_un client_sockaddr;
+	char buf[256];
+	memset(&client_sockaddr, 0 , sizeof(struct sockaddr_un));
+
+	
+	//Create the socket
+	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sockfd < 0)
+	{
+		fprintf(stderr, "Error calling socket on line %d\n", (__LINE__-2));
+		exit(1);
+	}
+
+	/********************************************************/
+	/* Set up the UNIX sockaddr structure		      	*/
+	/* by using AF_UNIX for the family and giving it a    	*/
+	/* filepath to bind to.				      	*/
+	/*						      	*/
+	/* Unlink the file so the bind will succeed, then bind  */
+	/* to that file 				        */
+	/********************************************************/
+
+	client_sockaddr.sun_family = AF_UNIX;
+	strcpy(client_sockaddr.sun_path, SOCKET_PATH);
+	len = sizeof(client_sockaddr);
+
+	/*
+	unlink(SOCKET_PATH);
+	*/	
+	char mode[] = "0777";
+	int i;
+	i = strtol(mode, 0, 8);
+	rc = chmod(SOCKET_PATH, i) ;
+	if (rc < 0)
+	{
+		perror("chmod failed");
+		exit(1);
+	}
+
+	/*	
+	rc = bind(sockfd, (struct sockaddr *) &client_sockaddr, len);
+	if (rc == -1)
+	{
+		printf("BIND ERROR: %s\n",strerror(errno));
+		close(sockfd);
+		exit(1);
+	} */
+	
+	/*
+	 * Set up the Unix socket structure
+	 * for server and connect. Hmmm
+	 * There should be no need for me 
+	 * to do this as I'm using the Node script.
+	 *
+	 * Well actually I still need to connect to the socket. */
+
+	rc = connect(sockfd, (struct sockaddr *)&client_sockaddr, len);
+	if (rc == -1)
+	{
+		char error_message[100];
+		sprintf(error_message, "Error occurred calling connect on line %d\n", __LINE__);
+		perror(error_message);
+		exit(1);
+	}
+
+
+
+
+	strcpy(buf, "Cams Test Data\n");
+	printf("Sending data...\n");
+	rc = send(sockfd, buf, strlen(buf), 0);
+	if (rc == -1)
+	{
+		printf("SEND ERROR = %s\n", strerror(errno)); 
+		close(sockfd);
+		exit(1);
+	}
+	else
+	{
+		printf("Sending of data to the buffer was a grand success\n");
+	}
+
+
+
+
 	mpfr_t x_coordinate, y_coordinate, width;
 	int precision=1065;
 	mpfr_init2(x_coordinate, MY_PRECISION);
@@ -427,14 +528,14 @@ int main(void)
 	clock_t end = clock();
 
 	double time_spent = (double)(end-begin)/CLOCKS_PER_SEC;
-	printf("Main() execution time was %lf\n", time_spent);
+	printf("Main() CPU time used was %lf seconds\n", time_spent);
 
 
 	struct timeval tv2;
 	struct timezone tz2;
 	gettimeofday(&tv2, &tz2);
 
-	printf("Wall clock time elapsed is %lf.\n", (double)(tv2.tv_sec - tv.tv_sec));
+	printf("Wall clock time elapsed is %lf seconds.\n", (double)(tv2.tv_sec - tv.tv_sec)+(double)(tv2.tv_usec - tv.tv_usec)/1000000);
 
 	return 0;
 }
@@ -496,10 +597,10 @@ void fill_double_array_from_file(const char * path, int size, double * target_ar
 }
 
 
-	void print_double_array(double *array, int size){
-		int index;
-		for( index=0; index<size; index++)
-		{
-			fprintf(stdout, "%f\n", array[index]);
-		}
+void print_double_array(double *array, int size){
+	int index;
+	for( index=0; index<size; index++)
+	{
+		fprintf(stdout, "%f\n", array[index]);
 	}
+}
