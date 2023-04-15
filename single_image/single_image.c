@@ -35,6 +35,8 @@ typedef struct image_params
 	mpfr_t * x_array;
 	mpfr_t * y_array;
 	mtx_t * mutex_ptr;
+	mtx_t * socket_mutex_ptr;
+	int sockfd;
 	double * red_coefficients;
 	double * green_coefficients;
 	double * blue_coefficients;		
@@ -108,6 +110,27 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 	image_params *args = thread_argument_wrapper.args;
 	printf("Thread %d is active\n", thread_argument_wrapper.thread_index);
 	printf("Thread name is %s\n", thread_argument_wrapper.thread_name);
+
+	
+	char buf[256];
+	//memset( (void*) buf, 0, sizeof(buf));
+	mtx_lock(args->socket_mutex_ptr);
+	sprintf(buf, "Thread %d is active\n", thread_argument_wrapper.thread_index);
+	int rc;
+	rc = send(args->sockfd, buf, strlen(buf), 0);
+	if (rc == -1)
+	{
+		printf("SEND ERROR = %s\n", strerror(errno)); 
+		close(args->sockfd);
+		exit(1);
+	}
+	else
+	{
+		printf("Sending of data to the buffer was a grand success\n");
+	}
+
+	mtx_unlock(args->socket_mutex_ptr);
+
 
 
 	int count = 0;
@@ -256,12 +279,12 @@ int main(void)
 	char mode[] = "0777";
 	int i;
 	i = strtol(mode, 0, 8);
-	rc = chmod(SOCKET_PATH, i) ;
-	if (rc < 0)
-	{
-		perror("chmod failed");
-		exit(1);
-	}
+//	rc = chmod(SOCKET_PATH, i) ;
+//	if (rc < 19)
+//	{
+//		perror("chmod failed");
+//		exit(5);
+//	}
 
 	/*	
 	rc = bind(sockfd, (struct sockaddr *) &client_sockaddr, len);
@@ -376,10 +399,26 @@ int main(void)
 	mtx_t  mutex;
 	if (mtx_init(&mutex, mtx_plain) != thrd_success)
 	{
-		fprintf(stderr, "Error initialising mutex on line %d\n", __LINE__);
+		fprintf(stderr, "Error initialising mutex (for image) on line %d\n", __LINE__);
 		return -1;
 	}
-	fprintf(stdout, "Mutex successfully initialised at line %d\n", __LINE__);
+	fprintf(stdout, "Mutex (for image) successfully initialised at line %d\n", __LINE__);
+	
+	mtx_t socket_mutex;
+	if (mtx_init(&socket_mutex, mtx_plain) != thrd_success)
+	{
+		fprintf(stderr, "Error initialising mutex (for socket) on line %d\n", __LINE__);
+		return -1;
+	}
+	fprintf(stdout, "Mutex (for socket) successfully initialised at line %d\n", __LINE__);
+
+
+
+
+
+		
+
+	
 
 	//define integer representing number of rows in image processed. Cast this as 
 	//a void pointer. 
@@ -468,7 +507,9 @@ int main(void)
 	thread_parameters.x_pixels = x_pixels;
 	thread_parameters.y_pixels = y_pixels;
 	thread_parameters.row_count = &rows_processed; // Threads will increment this to let others know row is complete
-	thread_parameters.mutex_ptr = &mutex;  // Makes rows_processed increment thread safe. 
+	thread_parameters.mutex_ptr = &mutex;  // Makes rows_processed increment thread safe
+	thread_parameters.socket_mutex_ptr = &socket_mutex;//
+	thread_parameters.sockfd = sockfd;
 	thread_parameters.image_data = image_data;
 	thread_parameters.y_array = y_values;
 	thread_parameters.x_array = x_values;
@@ -489,7 +530,7 @@ int main(void)
 	for (thread_index = 0; thread_index < THREAD_NUMBER; thread_index++)
 	{	
 		sprintf((char*)thread_name_str[thread_index], "Thread_%d", thread_index);
-		wrapper_arg.thread_index = 0;
+		wrapper_arg.thread_index = thread_index;
 		strcpy(wrapper_arg.thread_name, (char*)thread_name_str[thread_index]);
 		wrapper_arg.args = &thread_parameters;
 
@@ -524,6 +565,7 @@ int main(void)
 	mpfr_clear(ver_nudge);
 	mpfr_free_cache();
 	mtx_destroy(&mutex);
+	mtx_destroy(&socket_mutex);
 
 	clock_t end = clock();
 
