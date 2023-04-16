@@ -80,7 +80,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 	mpfr_t current_y, current_x;
 	int r, g, b;
 	double speed, inner_product;
-	int max_iter=100;
+	int max_iter=4000;
 	int iter_count=0;
 	mpfr_t real_component, imaginary_component, x_square, y_square, real_temp;
 	mpfr_t c_x, c_y;
