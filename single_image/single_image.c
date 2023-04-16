@@ -109,15 +109,33 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 
 	image_params *args = thread_argument_wrapper.args;
 	printf("Thread %d is active\n", thread_argument_wrapper.thread_index);
-	printf("Thread name is %s\n", thread_argument_wrapper.thread_name);
+	//printf("Thread name is %s\n", thread_argument_wrapper.thread_name);
 
 	
-	char buf[256];
-	//memset( (void*) buf, 0, sizeof(buf));
+	char buf[30];
+	memset( (void*) buf, 0, sizeof(buf));
 	mtx_lock(args->socket_mutex_ptr);
 	sprintf(buf, "Thread %d is active\n", thread_argument_wrapper.thread_index);
+
+	struct msghdr my_message;
+	my_message.msg_name = NULL; //https://man7.org/linux/man-pages/man2/send.2.html
+	my_message.msg_namelen = 0;
+
+	struct iovec message_iovec;
+
+	message_iovec.iov_base = buf; //https://man7.org/linux/man-pages/man2/readv.2.html
+	message_iovec.iov_len = strlen(buf);
+	my_message.msg_iov = &message_iovec;
+	my_message.msg_iovlen = 1;
+
+
+
+
+
 	int rc;
-	rc = send(args->sockfd, buf, strlen(buf), 0);
+	//rc = send(args->sockfd, buf, strlen(buf), 0);
+	rc = sendmsg(args->sockfd, &my_message, 0);
+	//sleep(1);
 	if (rc == -1)
 	{
 		printf("SEND ERROR = %s\n", strerror(errno)); 
@@ -126,7 +144,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 	}
 	else
 	{
-		printf("Sending of data to the buffer was a grand success\n");
+		printf("Sent data to unix socket from thread %d.\n", thread_argument_wrapper.thread_index);
 	}
 
 	mtx_unlock(args->socket_mutex_ptr);
@@ -142,7 +160,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 
 		mtx_lock(args->mutex_ptr);
 		current_row = *(args->row_count); // read current row
-		printf("current row = %d\n", current_row);
+		//printf("current row = %d\n", current_row);
 		if (current_row >= args->y_pixels -1)
 		{	
 			printf("Worker function is returning\n");
@@ -315,7 +333,7 @@ int main(void)
 
 
 
-	strcpy(buf, "Cams Test Data\n");
+	strcpy(buf, "test data from main\n");
 	printf("Sending data...\n");
 	rc = send(sockfd, buf, strlen(buf), 0);
 	if (rc == -1)
@@ -326,7 +344,7 @@ int main(void)
 	}
 	else
 	{
-		printf("Sending of data to the buffer was a grand success\n");
+		printf("main() sent data to serve.\n");
 	}
 
 
@@ -523,24 +541,24 @@ int main(void)
 
 
 	int thread_index;
-	thrd_awrp wrapper_arg;
+	thrd_awrp wrapper_arg[THREAD_NUMBER];
 	char * thread_int_str[20];
 	char * thread_name_str[THREAD_NUMBER][20];
 	
 	for (thread_index = 0; thread_index < THREAD_NUMBER; thread_index++)
 	{	
 		sprintf((char*)thread_name_str[thread_index], "Thread_%d", thread_index);
-		wrapper_arg.thread_index = thread_index;
-		strcpy(wrapper_arg.thread_name, (char*)thread_name_str[thread_index]);
-		wrapper_arg.args = &thread_parameters;
+		wrapper_arg[thread_index].thread_index = thread_index;
+		strcpy(wrapper_arg[thread_index].thread_name, (char*)thread_name_str[thread_index]);
+		wrapper_arg[thread_index].args = &thread_parameters;
 
-		if (thrd_create(&threads[thread_index],worker_function, (void*) &wrapper_arg) != thrd_success)
+		if (thrd_create(&threads[thread_index],worker_function, (void*) &wrapper_arg[thread_index]) != thrd_success)
 		{
 			fprintf(stderr, "Error creating thread %d.\n", thread_index);
 			return -99;
 		}
 		else {
-			printf("Successfully started thread %d.\n", thread_index);
+			printf("Successfully started thread %d.\nWrapper arg thread index is", thread_index);
 		}
 	}
 

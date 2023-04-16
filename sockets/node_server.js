@@ -27,14 +27,8 @@ function createServer(socket){
 		stream.on('data', (msg) => {
 			msg = msg.toString();
 
-			console.log(msg);
-
-			if (msg === 'here come dat boi'){
-				//stream.write('Kill yourself.')
-				}
-			//stream.write(msg)
-
-			});
+			console.log("msg:\n"+msg+"\nmsgend");	
+		});
 
 	})
 	.listen(socket, () =>	{
