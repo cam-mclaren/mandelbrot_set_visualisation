@@ -18,14 +18,14 @@ OBJECT_FILES = $(TARGET_FILES:%.c=%.o)
 
 SECONDARY_OBJECT_FILES=$(SECONDARY_TARGET:%.c=%.o) 
 
-main: $(OBJECT_FILES) 
+main.out: $(OBJECT_FILES) 
 	$(COMPILER)  $(OBJECT_FILES)  $(LINKER_FLAGS) -o main.out
 
 compile:
 	$(COMPILER) $(COMPILER_FLAGS) -c $(TARGET_FILES)
 
 runmain: main.out
-	./main.out
+	chmod 777 ../sockets/socket.sock && chmod 777 main.out && ./main.out
 
 clean: 
 	rm -rf *.o *.out

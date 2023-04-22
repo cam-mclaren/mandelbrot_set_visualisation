@@ -22,8 +22,11 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+//For uint32_t to send throught the pipe.
+#include <stdint.h>
+
 #define MY_PRECISION 665
-#define THREAD_NUMBER 10 
+#define THREAD_NUMBER 7 
 #define SOCKET_PATH "/usr/project/sockets/socket.sock"
 
 typedef struct image_params 
@@ -112,44 +115,21 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 	//printf("Thread name is %s\n", thread_argument_wrapper.thread_name);
 
 	
-	char buf[30];
+	int32_t buf[5];
 	memset( (void*) buf, 0, sizeof(buf));
-	mtx_lock(args->socket_mutex_ptr);
-	sprintf(buf, "Thread %d is active\n", thread_argument_wrapper.thread_index);
-
+	
 	struct msghdr my_message;
 	my_message.msg_name = NULL; //https://man7.org/linux/man-pages/man2/send.2.html
 	my_message.msg_namelen = 0;
 
 	struct iovec message_iovec;
 
-	message_iovec.iov_base = buf; //https://man7.org/linux/man-pages/man2/readv.2.html
-	message_iovec.iov_len = strlen(buf);
+	message_iovec.iov_base = (char*)buf; //https://man7.org/linux/man-pages/man2/readv.2.html
+	message_iovec.iov_len = 5*sizeof(int32_t);
 	my_message.msg_iov = &message_iovec;
 	my_message.msg_iovlen = 1;
 
-
-
-
-
 	int rc;
-	//rc = send(args->sockfd, buf, strlen(buf), 0);
-	rc = sendmsg(args->sockfd, &my_message, 0);
-	//sleep(1);
-	if (rc == -1)
-	{
-		printf("SEND ERROR = %s\n", strerror(errno)); 
-		close(args->sockfd);
-		exit(1);
-	}
-	else
-	{
-		printf("Sent data to unix socket from thread %d.\n", thread_argument_wrapper.thread_index);
-	}
-
-	mtx_unlock(args->socket_mutex_ptr);
-
-
 
 	int count = 0;
 	printf("args->ypixels = %d\n", args->y_pixels);
@@ -161,7 +141,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 		mtx_lock(args->mutex_ptr);
 		current_row = *(args->row_count); // read current row
 		//printf("current row = %d\n", current_row);
-		if (current_row >= args->y_pixels -1)
+		if (current_row >= args->y_pixels)
 		{	
 			printf("Worker function is returning\n");
 			free_mpfr_vars();		
@@ -236,6 +216,36 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 				*(args->image_data+(args->y_pixels - 1 - current_row)*args->x_pixels*3 + 3*j+0)=(unsigned char)r;
 				*(args->image_data+(args->y_pixels - 1 - current_row)*args->x_pixels*3 + 3*j+1)=(unsigned char)g;
 				*(args->image_data+(args->y_pixels - 1 - current_row)*args->x_pixels*3 + 3*j+2)=(unsigned char)b;
+
+
+				// Socket can go here
+				//
+				//
+				//
+				//Prepare message
+				// set array as zero.
+				//memset( (void*) buf, 0, sizeof(buf));	
+				buf[0]= (uint32_t)j;
+				buf[1]= (uint32_t)(current_row);
+				buf[2]= (uint32_t)r;
+				buf[3]= (uint32_t)g;
+				buf[4]= (uint32_t)b;
+				mtx_lock(args->socket_mutex_ptr);
+				rc = sendmsg(args->sockfd, &my_message, 0);
+				if (rc == -1)
+				{
+					printf("SEND ERROR = %s\n", strerror(errno)); 
+					close(args->sockfd);
+					exit(1);
+				}
+				else
+				{
+					printf("Sent data to unix socket from thread %d.\n", thread_argument_wrapper.thread_index);
+				}
+				mtx_unlock(args->socket_mutex_ptr);
+
+
+
 			}
 		}
 		count++;
@@ -333,19 +343,19 @@ int main(void)
 
 
 
-	strcpy(buf, "test data from main\n");
-	printf("Sending data...\n");
-	rc = send(sockfd, buf, strlen(buf), 0);
-	if (rc == -1)
-	{
-		printf("SEND ERROR = %s\n", strerror(errno)); 
-		close(sockfd);
-		exit(1);
-	}
-	else
-	{
-		printf("main() sent data to serve.\n");
-	}
+	//strcpy(buf, "test data from main\n");
+	//printf("Sending data...\n");
+	//rc = send(sockfd, buf, strlen(buf), 0);
+	//if (rc == -1)
+	//{
+	//	printf("SEND ERROR = %s\n", strerror(errno)); 
+	//	close(sockfd);
+	//	exit(1);
+	//}
+	//else
+	//{
+	//	printf("main() sent data to serve.\n");
+	//}
 
 
 
