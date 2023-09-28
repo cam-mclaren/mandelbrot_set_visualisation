@@ -86,16 +86,18 @@ int main(int argc, char * * argv){
 
   // Find Left boundary
   mpfr_sub(left_boundary, x_coordinate, half_width, MPFR_RNDD);
+  mpfr_fprintf(stdout, "left_boundary = %.50Rf\n", left_boundary);
 
   // find height
   mpfr_mul(height, width, aspect_ratio, MPFR_RNDD);
+  mpfr_fprintf(stdout, "height = %.50Rf\n", height);
 
   // find half height
   mpfr_div_ui(half_height, height, 2, MPFR_RNDD);
 
   // Find the bottom boundary
   mpfr_sub(bottom_boundary, y_coordinate, half_height, MPFR_RNDD);
-
+  mpfr_fprintf(stdout, "bottom_boundary = %.50Rf\n", bottom_boundary);
 
   /* Calculate offset */
 
@@ -107,12 +109,14 @@ int main(int argc, char * * argv){
   mpfr_init2(x_offset, precision);
   mpfr_init2(y_offset, precision);
 
+  /*x offset = width*xpixel_target*/
   mpfr_mul_ui(x_offset, width, x_pixel_target, MPFR_RNDD);
   mpfr_div_ui(x_offset, x_offset, x_pixels, MPFR_RNDD);
+  mpfr_fprintf(stdout, "x_offset = %.50Rf\n", x_offset );
 
   mpfr_mul_ui(y_offset, height, y_pixel_target, MPFR_RNDD);
   mpfr_div_ui(y_offset, y_offset, y_pixels, MPFR_RNDD);
-
+  mpfr_fprintf(stdout, "y_offset = %.50Rf\n", y_offset );
 
 
   /* Calculate the new centre coordinates */
@@ -123,8 +127,8 @@ int main(int argc, char * * argv){
 
   mpfr_add(new_centre_x, left_boundary, x_offset, MPFR_RNDD);
   mpfr_add(new_centre_y, bottom_boundary, y_offset, MPFR_RNDD);
-
-
+  mpfr_fprintf(stdout, "new_centre_x = %.50Rf\n", new_centre_x );
+  mpfr_fprintf(stdout, "new_centre_y = %.50Rf\n", new_centre_y );
   //print this out to see if it works.
   mpfr_fprintf(stdout, "%.50Rf\n", new_centre_x );
   mpfr_fprintf(stdout, "%.50Rf\n", new_centre_y );

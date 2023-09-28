@@ -3,17 +3,34 @@
 	<head>
 		<meta charset = "UTF-8">
 		<title>Canvas Example</title>
-<style>
-canvas {
-	display: block;
-	margin: auto;
-	border: 1px solid black;
-}
-</style>
-<script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
+        <style>
+            canvas {
+                display: block;
+                margin: auto;
+                border: 1px solid black;
+            }
+        </style>
+		<img src='/image.jpg' hidden>
+        <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script>
 	</head>
 	<body>
-		<canvas width="1020" height="720"></canvas>
-		<script src="js/script.js"></script>
+	    <p>Mandelbrot Set Visualisation</p>
+        <div>
+            <canvas width="1280" height="720"></canvas>
+        </div>
+        <button id='submit' style="display: block;" type='button'>Submit Image Parameters</button>
+        <div id='image_param'>
+            <p id='par-x' >x:</p>
+            <p id='par-y'>y:</p>
+            <p id='par-width'>width:</p>
+        </div>
+        <button id='submitrender' style="display: block;" type='button'>Render Image</button>
+        <div id = 'next-image-data'>
+            <p id='nu-x' >new x:</p>
+            <p id='nu-y'>new y:</p>
+            <p id='nu-width'>new width:</p>
+        </div> 
 	</body>
+	<script src="js/webworker.js"></script>
+	<script src="js/script.js"></script>
 </html>

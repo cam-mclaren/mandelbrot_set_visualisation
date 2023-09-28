@@ -258,7 +258,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 
 
 
-int main(void)
+int main(int argc, char ** argv)
 {
 
 	// Read from file the coordinates
@@ -367,6 +367,11 @@ int main(void)
 	mpfr_init2(width, MY_PRECISION);
 	int read_status;
 
+    mpfr_strtofr(x_coordinate, *(argv+1), NULL, 10, MPFR_RNDD);
+    mpfr_strtofr(y_coordinate, *(argv+2), NULL, 10, MPFR_RNDD);
+    mpfr_strtofr(width, *(argv+3), NULL, 10, MPFR_RNDD);
+
+    /* Instead of reading the file parameters use command line output 
 	FILE * fptr=fopen("image_parameters.txt", "r");
 	if(fptr==NULL)
 	{
@@ -394,7 +399,7 @@ int main(void)
 		fclose(fptr);
 		return EXIT_FAILURE;
 	}
-	fclose(fptr);
+	fclose(fptr); */
 
 	//mpfr_fprintf(stdout,"%Rf\n",x_coordinate);
 	//mpfr_fprintf(stdout,"%Rf\n",y_coordinate);
@@ -417,11 +422,6 @@ int main(void)
 															coefficent_number,blue_coefficients);
 	fill_double_array_from_file("../interpolation/colour_parameters/nodes",\
 															coefficent_number,nodes);
-
-
-	//resolution
-	int x_pixels = 1280;
-	int y_pixels = 720;
 
 	// declare and initialise mutex
 	mtx_t  mutex;
@@ -453,6 +453,9 @@ int main(void)
 	int rows_processed = 0;
 	void * thread_argument = (void*)&rows_processed;
 
+	//resolution
+	int x_pixels = 1280;
+	int y_pixels = 720;
 
 	//aspect ratio
 	mpfr_t aspect_ratio;

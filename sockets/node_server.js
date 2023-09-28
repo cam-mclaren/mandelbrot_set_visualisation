@@ -1,43 +1,45 @@
-
-
-
-
-
 /* Example of interprocess communication in Node.js using a UNIX domain socket */
 
-var 	net = require('net'),
+var net = require('net'),
 	fs = require('fs'),
 	express = require('express'),
 	http = require('http'),
 	path = require('path'),
 	process = require('process'),
-	io = require('socket.io')(server, { cors: { origin: '*'}}),
-	connections = {},
-	server;
+    bodyParser = require('body-parser'),
+    nextcentre = require('./nextcentre')['nextcentre']
+	connections = {};
+
+var {create, all} = require("mathjs");
+var config= {
+  number: 'BigNumber',      // Default type of number:
+                            // 'number' (default), 'BigNumber', or 'Fraction'
+  precision: 200,            // Number of significant digits for BigNumbers
+  epsilon: 1e-200
+};
+var mathjs = create(all, config);
+var image_x
+var image_y
+var image_width
+
+
+var WebSocket = require('ws');
+var webSocket_server = new WebSocket.Server( { port: 3009 });
+var my_web_socket
+
+webSocket_server.on('connection', (ws) => {
+        console.log("Client connected to webSocekt_server")
+        my_web_socket = ws
+});
+
+var { spawn } = require("child_process");
 
 
 
 var app = express();
-
+app.use(bodyParser.json({ extended: true}));
 
 //var web_sockets = [];
-var my_web_socket
-
-io.on('connection', function(socket) {
-	console.log('A user connected');
-
-	socket.on('event', function() {
-		io.emit('another_event', message);
-	})
-
-	socket.on('disconnect', function() {
-		console.log('A user disconnected.');
-	})
-
-	my_web_socket = socket;
-})
-
-
 
 var httpServer = http.createServer(app);
 
@@ -47,9 +49,71 @@ app.get('/', (req, res) => {
 
 app.get('/js/script.js', (req, res) => {
 	res.sendFile(path.join(process.cwd(), 'js', 'script.js'));
-})	
+})
 
-;
+app.get('/js/webworker.js', (req, res) => {
+	res.sendFile(path.join(process.cwd(), 'js', 'webworker.js'));
+})
+
+app.get('/init-params', (req, res) => {
+    console.log('init-params endpoint');
+        res.json({
+            "x": "-1.10941930270254405808689884994886904427000585937500",
+            "y": "-0.25988683407403302019496355878071500627552734375000",
+            "width": "0.000000000000000000000000000000000000009125"
+        });
+})
+
+app.post('/submit-image-params', (req, res) => {
+    client_data = req.body;
+    console.log(client_data);
+    let old_image_width= mathjs.bignumber(client_data['w']);
+
+    next_x_y = nextcentre(
+        mathjs.bignumber(client_data['x']),
+        mathjs.bignumber(client_data['y']),
+        mathjs.bignumber(client_data['w']),
+        mathjs.bignumber(client_data['x_pixel_target']),
+        mathjs.bignumber(client_data['y_pixel_target']))
+
+    image_x = next_x_y['new_centre_x']
+    image_y = next_x_y['new_centre_y']
+    image_width = mathjs.chain(old_image_width).divide(1280).multiply(client_data['rect_size']).done() 
+    res.json(
+                {
+                    "x": mathjs.format(image_x, 200),
+                    "y": mathjs.format(image_y, 200),
+                    "width": mathjs.format(image_width,{'precision':200, 'notation' : 'fixed'})
+                }
+            )
+})
+
+app.get('/image.jpg', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'image.jpg'));
+})
+
+app.get('/image.jpg', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'image.jpg'));
+})
+
+app.get('/submitrender', (req, res) => {
+    console.log("Render request recieved");
+    let perm_proc = spawn("docker" , ["exec", "-w", "/usr/project/single_image/", "image_builder", "chmod", "777", "../sockets/socket.sock"]); 
+    let docker_proc = spawn("docker" , ["exec", "-w", "/usr/project/single_image/", "image_builder", "/usr/project/single_image/main.out", mathjs.format(image_x, 200), mathjs.format(image_y, 200), mathjs.format(image_width,{'precision':200, 'notation' : 'fixed'}) ]); 
+
+    docker_proc.stdout.on("data", data => {
+
+        console.log(`stdout: ${data}`);
+    });
+
+    docker_proc.stderr.on("data", data => {
+        console.log(`stderr: ${data}`);
+    });
+    docker_proc.on('error', (error) => { console.log(`error: ${error}`)}); 
+
+
+    res.send("Got it");
+})
 
 
 const SOCKET_PATH = './socket.sock';
@@ -71,7 +135,7 @@ function createServer(socket){
 
 		stream.on('data', (msg) => {
 			//msg = msg.toString();
-			my_web_socket.emit('news', msg);			
+			my_web_socket.send(msg);			
 			//console.log("msg:\n"+msg+"\nmsgend");	
 		});
 
@@ -105,4 +169,3 @@ httpServer.listen( httpPort, () => {
 }
 )
 
-io.listen(3009)
