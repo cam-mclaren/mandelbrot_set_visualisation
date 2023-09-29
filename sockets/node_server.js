@@ -22,7 +22,7 @@ var image_x
 var image_y
 var image_width
 var firstMessage = true
-
+var INTSIZE = 2
 var image_pixels_high = 720
 var image_pixels_wide = 1280
 
@@ -40,7 +40,6 @@ var { spawn } = require("child_process");
 
 const SOCKET_PATH = './socket.sock';
 var nums_in_msg = 5
-var num_size_bytes = 4
 
 function createServer(socket){
 	console.log('Creating server.');
@@ -48,7 +47,7 @@ function createServer(socket){
 	var server = net.createServer(function(stream) 
         {
 		    console.log('Connection acknowledged.');
-            stream.image_data = Buffer.alloc(nums_in_msg*num_size_bytes*image_pixels_wide*image_pixels_high)
+            stream.image_data = Buffer.alloc(nums_in_msg*INTSIZE*image_pixels_wide*image_pixels_high)
             stream.received_image_index = 0
             stream.sent_data_index = 0
             this.mySocket = stream
@@ -61,6 +60,12 @@ function createServer(socket){
 			    console.log('Client disconnected.');
 			    delete connections[nowTime];
 		    })
+            stream.on('error',function(error){
+                console.log(`domain socket errored after reading bytes ${this.bytesRead}`)
+            });
+            stream.on('close', function(){
+                console.log("Socket closed")
+            });
 
         function firstMessage(msg) {
             console.log("First Message")
@@ -81,7 +86,7 @@ function createServer(socket){
                 this.image_data[this.received_image_index + index ]=msg[index]
             }
             this.received_image_index = this.received_image_index + msg.length
-            //console.log(this.received_image_index)
+            console.log(this.bytesRead)
 		    });
         }
         stream.on('data', firstMessage)
@@ -115,11 +120,15 @@ webSocket_server.on('connection', function(ws) {
         
         console.log("Client connected to webSocket_server")
         ws.on('message', (msg) => {
-            //console.log(msg.toString())
+//            console.log(msg.toString())
             start_index = unix_sock_server.mySocket.sent_data_index
-            end_index = unix_sock_server.mySocket.received_image_index - unix_sock_server.mySocket.received_image_index % 20
-
-            //console.log(start_index, end_index)
+            end_index = unix_sock_server.mySocket.received_image_index - unix_sock_server.mySocket.received_image_index % INTSIZE*nums_in_msg
+            max=INTSIZE*nums_in_msg*10000
+            if (end_index - start_index > max)
+            {
+                end_index = start_index + max
+            }
+ //           console.log(start_index, end_index)
             ws.send( unix_sock_server.mySocket.image_data.slice(start_index,end_index))
             unix_sock_server.mySocket.sent_data_index = end_index
         });
@@ -137,16 +146,21 @@ app.use(bodyParser.json({ extended: true}));
 
 var httpServer = http.createServer(app);
 
+var headers = {
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Embedder-Policy': 'require-corp'
+}
+
 app.get('/', (req, res) => {
-	res.sendFile(path.join(process.cwd(), 'html','index.html'))
+	res.sendFile(path.join(process.cwd(), 'html','index.html'),{'headers': headers})
 })
 
 app.get('/js/script.js', (req, res) => {
-	res.sendFile(path.join(process.cwd(), 'js', 'script.js'));
+	res.sendFile(path.join(process.cwd(), 'js', 'script.js'),{'headers': headers});
 })
 
 app.get('/js/webworker.js', (req, res) => {
-	res.sendFile(path.join(process.cwd(), 'js', 'webworker.js'));
+	res.sendFile(path.join(process.cwd(), 'js', 'webworker.js'),{'headers': headers});
 })
 
 app.get('/init-params', (req, res) => {
@@ -185,23 +199,38 @@ app.post('/submit-image-params', (req, res) => {
 })
 
 app.get('/image.jpg', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'image.jpg'));
+    res.sendFile(path.join(process.cwd(), 'image.jpg'),{'headers': headers});
 })
 
 app.get('/submitrender', (req, res) => {
     console.log("Render request received");
 
     let perm_proc = spawn("docker" , ["exec", "-w", "/usr/project/single_image/", "image_builder", "chmod", "777", "../sockets/socket.sock"]); 
-    let docker_proc = spawn("docker" , ["exec", "-w", "/usr/project/single_image/", "image_builder", "/usr/project/single_image/main.out", mathjs.format(image_x, 200), mathjs.format(image_y, 200), mathjs.format(image_width,{'precision':200, 'notation' : 'fixed'}) ]); 
+    let docker_proc = spawn("docker" ,
+        ["exec", "-w", "/usr/project/single_image/", "image_builder", "/usr/project/single_image/main.out", mathjs.format(image_x, 200), mathjs.format(image_y, 200), mathjs.format(image_width,{'precision':200, 'notation' : 'fixed'}) ],
+        {
+            timeout: 1000 *60*5
+        }); 
 
-//    docker_proc.stdout.on("data", data => {
-//        console.log(`stdout: ${data}`);
-//    });
-//
+    docker_proc.stdout.on("data", data => {
+       // console.log(`stdout: ${data}`);
+    });
+
     docker_proc.stderr.on("data", data => {
         console.log(`stderr: ${data}`);
     });
     docker_proc.on('error', (error) => { console.log(`error: ${error}`)}); 
+    docker_proc.on('close', () => { 
+        console.log("Docker process closed")
+//        fs.rename(
+//            path.join(process.cwd(), 'image.jpg'),
+//            path.join(process.cwd(), 'image.jpg.old'),
+//            function( err) {if(err) throw err})
+//        fs.rename(
+//            path.join(process.cwd(), '..','single_image','image.jpg'),
+//            path.join(process.cwd(), 'image.jpg'),
+//            function( err) {if(err) throw err})
+    });  
 
 
     res.send("Got it");

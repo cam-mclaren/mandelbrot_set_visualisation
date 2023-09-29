@@ -22,7 +22,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-//For uint32_t to send throught the pipe.
+//For uint16_t to send throught the pipe.
 #include <stdint.h>
 
 #define MY_PRECISION 665
@@ -115,7 +115,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 	//printf("Thread name is %s\n", thread_argument_wrapper.thread_name);
 
 	
-	int32_t buf[5];
+	int16_t buf[5];
 	memset( (void*) buf, 0, sizeof(buf));
 	
 	struct msghdr my_message;
@@ -125,7 +125,7 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 	struct iovec message_iovec;
 
 	message_iovec.iov_base = (char*)buf; //https://man7.org/linux/man-pages/man2/readv.2.html
-	message_iovec.iov_len = 5*sizeof(int32_t);
+	message_iovec.iov_len = 5*sizeof(int16_t);
 	my_message.msg_iov = &message_iovec;
 	my_message.msg_iovlen = 1;
 
@@ -225,11 +225,11 @@ int worker_function( void * wrapper_arg /* void pointer to pointer to struct*/)
 				//Prepare message
 				// set array as zero.
 				//memset( (void*) buf, 0, sizeof(buf));	
-				buf[0]= (uint32_t)j;
-				buf[1]= (uint32_t)(current_row);
-				buf[2]= (uint32_t)r;
-				buf[3]= (uint32_t)g;
-				buf[4]= (uint32_t)b;
+				buf[0]= (uint16_t)j;
+				buf[1]= (uint16_t)(current_row);
+				buf[2]= (uint16_t)r;
+				buf[3]= (uint16_t)g;
+				buf[4]= (uint16_t)b;
 				mtx_lock(args->socket_mutex_ptr);
 				rc = sendmsg(args->sockfd, &my_message, 0);
 				if (rc == -1)

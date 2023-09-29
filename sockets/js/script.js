@@ -15,12 +15,15 @@ let rect_size = 10
 let x = 0;
 let y = 0;
 let  unclicked =0;
-
+var drawn_index = 0 // Index of imageData drawn to canvas
+var imageData_index=0 // Index of imageData received from worker thread
+var sab // Shared Array Buffer
+var imageData // Typed Array view of sab
 let w = new Worker('/js/webworker.js');
 
 
 function colorPixel(pixel) {
-
+    console.log(pixel)
 	//const [x, y, r, g, b ] = pixel;
 
 	// Set the fill style to the provided rgb colour
@@ -35,18 +38,48 @@ function colorPixel(pixel) {
 }
 
 
-w.onmessage = function(event){
-    console.log('msg from worker',event.data)
-//    requestAnimationFrame(() =>
-//        {
-//            for (let i =0; i < event.data.length; i++)
-//            {
-//                colorPixel(event.data[i]);
-//            }
-//            event = null; 
-//        });
-};
+function messageFunction(event){
+    if (typeof(event.data)=='string') 
+    {
+        console.log(event.data)
+        if (event.data == 'Successfully initialised sab')
+        {
+            w.onmessage = (event)=> {
+                var sab = event.data
+                w.onmessage = messageFunction 
+                console.log("onmessage received the sab")
+                try {
+                    imageData = new Uint16Array(sab)
+                    console.log("Created Typed Array view imageData")
+                }
+                catch(err)
+                {
+                postMessage(`Could not create Uint16array view in main \n${err}`)
+                }
 
+            }
+        }
+    } else if (event.data['write_index'] != undefined)
+    {
+        imageData_index = event.data["write_index"]
+        console.log(`imageData_index is now at ${imageData_index}`)
+    }
+    {
+        console.log(`Received object of type ${typeof(event.data)}`)
+    }
+    if (imageData != undefined)
+    {  
+        while (drawn_index < imageData_index) 
+        {
+            console.log(imageData.slice(drawn_index,drawn_index+5))
+            ctx.beginPath()
+            colorPixel(imageData.slice(drawn_index,drawn_index+5));
+            ctx.stroke()
+            drawn_index = drawn_index +5
+        };
+    }
+}
+w.onmessage = messageFunction
 
 function update_image_param(server_data, data_div, data_to_update)
 {
