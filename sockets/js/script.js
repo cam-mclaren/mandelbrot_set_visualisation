@@ -36,14 +36,15 @@ function colorPixel(pixel) {
 
 
 w.onmessage = function(event){
-    requestAnimationFrame(() =>
-        {
-            for (let i =0; i < event.data.length; i++)
-            {
-                colorPixel(event.data[i]);
-            }
-            event = null; 
-        });
+    console.log('msg from worker',event.data)
+//    requestAnimationFrame(() =>
+//        {
+//            for (let i =0; i < event.data.length; i++)
+//            {
+//                colorPixel(event.data[i]);
+//            }
+//            event = null; 
+//        });
 };
 
 

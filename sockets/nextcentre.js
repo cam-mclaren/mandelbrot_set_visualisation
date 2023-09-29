@@ -8,8 +8,12 @@ var config= {
 };
 
 var mathjs = create(all, config);
+    image_dim = {
+        'height' : mathjs.bignumber(720),
+        'width' : mathjs.bignumber(1280)
+        }
 
-function nextcentre(x,y,w,x_pixel_target,y_pixel_target, debug = false)
+function nextcentre(x,y,w,x_pixel_target,y_pixel_target, image_pixels_wide, image_pixels_high, debug = false)
 /***********************************************    
     * Type information 
     * x : mathjs.bignumber
@@ -17,6 +21,8 @@ function nextcentre(x,y,w,x_pixel_target,y_pixel_target, debug = false)
     * w : mathjs.bignumber
     * x_pixel_target : mathjs.bignumber
     * y_pixel_target :mathjs.bignumber
+    * image_pixels_wide : mathjs.bignumber
+    * image_pixels_high : mathjs.bignumber
     * debug : bool
     *******************************************/
     {
@@ -26,32 +32,28 @@ function nextcentre(x,y,w,x_pixel_target,y_pixel_target, debug = false)
     if (isDebug){console.log(`${var_name} = ${mathjs.format(var_val, format_config)}`)}
     }
 
-    image_dim = {
-        'height' : mathjs.bignumber(720),
-        'width' : mathjs.bignumber(1280)
-        }
     // Image x procedures
     left_boundary = mathjs.chain(x).subtract(mathjs.divide(w,mathjs.bignumber(2))).done()
     debug_nextcentre('left_boundary', left_boundary , debug)
 
-    x_offset = mathjs.chain(w).multiply(x_pixel_target).divide(image_dim['width']).done() 
+    x_offset = mathjs.chain(w).multiply(x_pixel_target).divide(image_pixels_wide).done() 
     debug_nextcentre('x_offset', x_offset , debug)
 
     new_centre_x = mathjs.add(left_boundary, x_offset)
     debug_nextcentre('new_centre_x', new_centre_x  , debug)  
 
     // Image y procedures
-    aspect_ratio = mathjs.divide(image_dim['height'], image_dim['width'])
+    aspect_ratio = mathjs.divide(image_pixels_high, image_pixels_wide)
     height = mathjs.multiply(w, aspect_ratio)
     debug_nextcentre('height', height  , debug)
 
     bottom_boundary = mathjs.subtract(y, mathjs.divide(height,mathjs.bignumber(2)))
     debug_nextcentre('bottom_boundary', bottom_boundary  , debug)  
 
-    y_pixel_target = mathjs.subtract(image_dim['height'], y_pixel_target)
+    y_pixel_target = mathjs.subtract(image_pixels_high, y_pixel_target)
     debug_nextcentre('y_pixel_target', y_pixel_target , debug) 
 
-    y_offset = mathjs.chain(height).multiply(y_pixel_target).divide(image_dim['height']).done() 
+    y_offset = mathjs.chain(height).multiply(y_pixel_target).divide(image_pixels_high).done() 
     debug_nextcentre('y_offset', y_offset  , debug)
 
     new_centre_y = mathjs.add(y_offset,bottom_boundary)

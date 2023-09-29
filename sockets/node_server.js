@@ -21,18 +21,112 @@ var mathjs = create(all, config);
 var image_x
 var image_y
 var image_width
+var firstMessage = true
+
+var image_pixels_high = 720
+var image_pixels_wide = 1280
 
 
 var WebSocket = require('ws');
 var webSocket_server = new WebSocket.Server( { port: 3009 });
-var my_web_socket
 
-webSocket_server.on('connection', (ws) => {
-        console.log("Client connected to webSocekt_server")
-        my_web_socket = ws
+
+
+// Using this to call the docker container
+var { spawn } = require("child_process");
+
+
+
+
+const SOCKET_PATH = './socket.sock';
+var nums_in_msg = 5
+var num_size_bytes = 4
+
+function createServer(socket){
+	console.log('Creating server.');
+
+	var server = net.createServer(function(stream) 
+        {
+		    console.log('Connection acknowledged.');
+            stream.image_data = Buffer.alloc(nums_in_msg*num_size_bytes*image_pixels_wide*image_pixels_high)
+            stream.received_image_index = 0
+            stream.sent_data_index = 0
+            this.mySocket = stream
+
+		    var nowTime = Date.now();
+
+		    connections[nowTime] = (stream); // <- What this is doing I am unsure
+
+		    stream.on('end', function() {
+			    console.log('Client disconnected.');
+			    delete connections[nowTime];
+		    })
+
+        function firstMessage(msg) {
+            console.log("First Message")
+            // this = domain socket
+            for(let index = 0; index < msg.length; index++)
+            {   
+                this.image_data[this.received_image_index + index ]=msg[index]
+            }
+
+            this.received_image_index = this.received_image_index + msg.length
+            webSocket_server.websock.send(msg) 
+            this.sent_data_index = this.sent_data_index + msg.length
+            console.log(0,msg.length) 
+            this.off('data', firstMessage)
+            this.on('data', function(msg) {
+            for(let index = 0; index < msg.length; index++)
+            {   
+                this.image_data[this.received_image_index + index ]=msg[index]
+            }
+            this.received_image_index = this.received_image_index + msg.length
+            //console.log(this.received_image_index)
+		    });
+        }
+        stream.on('data', firstMessage)
+        
+
+	})
+	.listen(socket, () =>	{
+			fs.chmodSync(socket, 777);
+		}
+	)
+	.on('connection', function(socket){
+		console.log('Client connected');
+		//console.log('Send boop test');
+		//stream.write('Boop test')
+	});
+
+		return server;
+}
+
+
+fs.unlink(path.join(process.cwd(),"socket.sock"), (err) =>
+	{
+		if (err) throw err;
+		console.log("Hopefully the bloody socket got deleted");
+	}
+)
+
+unix_sock_server = createServer(SOCKET_PATH);
+
+webSocket_server.on('connection', function(ws) {
+        
+        console.log("Client connected to webSocket_server")
+        ws.on('message', (msg) => {
+            //console.log(msg.toString())
+            start_index = unix_sock_server.mySocket.sent_data_index
+            end_index = unix_sock_server.mySocket.received_image_index - unix_sock_server.mySocket.received_image_index % 20
+
+            //console.log(start_index, end_index)
+            ws.send( unix_sock_server.mySocket.image_data.slice(start_index,end_index))
+            unix_sock_server.mySocket.sent_data_index = end_index
+        });
+        this.websock = ws
+        //console.log(ws)
 });
 
-var { spawn } = require("child_process");
 
 
 
@@ -74,11 +168,13 @@ app.post('/submit-image-params', (req, res) => {
         mathjs.bignumber(client_data['y']),
         mathjs.bignumber(client_data['w']),
         mathjs.bignumber(client_data['x_pixel_target']),
-        mathjs.bignumber(client_data['y_pixel_target']))
+        mathjs.bignumber(client_data['y_pixel_target']),
+        mathjs.bignumber(image_pixels_wide),
+        mathjs.bignumber(image_pixels_high))
 
     image_x = next_x_y['new_centre_x']
     image_y = next_x_y['new_centre_y']
-    image_width = mathjs.chain(old_image_width).divide(1280).multiply(client_data['rect_size']).done() 
+    image_width = mathjs.chain(old_image_width).divide(image_pixels_wide).multiply(client_data['rect_size']).done() 
     res.json(
                 {
                     "x": mathjs.format(image_x, 200),
@@ -92,20 +188,16 @@ app.get('/image.jpg', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'image.jpg'));
 })
 
-app.get('/image.jpg', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'image.jpg'));
-})
-
 app.get('/submitrender', (req, res) => {
-    console.log("Render request recieved");
+    console.log("Render request received");
+
     let perm_proc = spawn("docker" , ["exec", "-w", "/usr/project/single_image/", "image_builder", "chmod", "777", "../sockets/socket.sock"]); 
     let docker_proc = spawn("docker" , ["exec", "-w", "/usr/project/single_image/", "image_builder", "/usr/project/single_image/main.out", mathjs.format(image_x, 200), mathjs.format(image_y, 200), mathjs.format(image_width,{'precision':200, 'notation' : 'fixed'}) ]); 
 
-    docker_proc.stdout.on("data", data => {
-
-        console.log(`stdout: ${data}`);
-    });
-
+//    docker_proc.stdout.on("data", data => {
+//        console.log(`stdout: ${data}`);
+//    });
+//
     docker_proc.stderr.on("data", data => {
         console.log(`stderr: ${data}`);
     });
@@ -115,53 +207,6 @@ app.get('/submitrender', (req, res) => {
     res.send("Got it");
 })
 
-
-const SOCKET_PATH = './socket.sock';
-
-
-function createServer(socket){
-	console.log('Creating server.');
-	var server = net.createServer(function(stream) {
-		console.log('Connection acknowledged.');
-
-
-		var self = Date.now();
-
-		connections[self] = (stream); // <- What this is doing I am unsure
-		stream.on('end', function() {
-			console.log('Client disconnected.');
-			delete connections[self];
-		})
-
-		stream.on('data', (msg) => {
-			//msg = msg.toString();
-			my_web_socket.send(msg);			
-			//console.log("msg:\n"+msg+"\nmsgend");	
-		});
-
-	})
-	.listen(socket, () =>	{
-			fs.chmodSync(socket, 777);
-		}
-	)
-	.on('connection', function(socket){
-		console.log('Client connected');
-		//console.log('Send boop test');
-		//stream.write('Boop test')
-	});
-
-		return server;
-}
-
-
-fs.unlink(path.join(process.cwd(),"socket.sock"), (err) =>
-	{
-		if (err) throw err;
-		console.log("Hopefully the bloody socket got deleted");
-	}
-)
-
-server = createServer(SOCKET_PATH);
 
 var httpPort = 3000
 httpServer.listen( httpPort, () => {
